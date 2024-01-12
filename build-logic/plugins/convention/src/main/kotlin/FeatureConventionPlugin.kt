@@ -15,6 +15,7 @@ class FeatureConventionPlugin : Plugin<Project> {
             add("implementation",libs.core.ktx)
             add("implementation",libs.appcompat)
             add("implementation",libs.lifecycle.runtime.ktx)
+            add("implementation", libs.material)
 
             // Hilt
             add("implementation",libs.hilt)
@@ -25,6 +26,7 @@ class FeatureConventionPlugin : Plugin<Project> {
             add("testImplementation",libs.junit)
             add("androidTestImplementation",libs.androidx.test.ext.junit)
             add("androidTestImplementation",libs.espresso.core)
+            add("implementation", libs.navigation.compose)
 
         }
     }

@@ -1,10 +1,9 @@
 package ai.flox.chat.ui
 
+import ai.flox.arch.Store
 import ai.flox.chat.model.ChatAction
 import ai.flox.chat.model.ChatMessage
 import ai.flox.chat.model.ChatState
-import ai.flox.state.Action
-import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,7 +12,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.wrapContentHeight
-import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -33,14 +31,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.constraintlayout.compose.ConstraintLayout
 import androidx.constraintlayout.compose.Dimension
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+
 
 @Composable
 fun ChatListScreen(
-    state: ChatState,
-    dispatchEvent: (Action) -> Unit
+    store: Store<ChatState, ChatAction>
 ) {
-    Log.d("ChatListScreen", "State: $state")
-
+    val state: ChatState by store.state.collectAsStateWithLifecycle(initialValue = ChatState())
     state.recentChatList?.let {
         ConstraintLayout(modifier = Modifier.fillMaxSize()) {
             val (messages, chatBox) = createRefs()
@@ -62,7 +60,7 @@ fun ChatListScreen(
                     ChatMessage(item)
                 }
             }
-            ComposeBox(state.composeState, dispatchEvent = dispatchEvent,
+            ComposeBox(state.composeState, dispatchEvent = store::dispatch,
                 modifier = Modifier
                     .fillMaxWidth()
                     .constrainAs(chatBox) {
@@ -79,13 +77,18 @@ fun ChatListScreen(
 @Composable
 fun ComposeBox(
     composeState: ChatState.ComposeState,
-    dispatchEvent: (Action) -> Unit,
+    dispatchEvent: (ChatAction) -> Unit,
     modifier: Modifier = Modifier
 ) {
     var text by rememberSaveable { mutableStateOf(composeState.userInput) }
     Row(modifier = modifier) {
-        Row(modifier = Modifier.weight(1f, false).fillMaxWidth().wrapContentHeight()) {
-            Column(modifier = Modifier.weight(0.85f).fillMaxWidth()) {
+        Row(modifier = Modifier
+            .weight(1f, false)
+            .fillMaxWidth()
+            .wrapContentHeight()) {
+            Column(modifier = Modifier
+                .weight(0.85f)
+                .fillMaxWidth()) {
                 TextField(
                     modifier = Modifier.fillMaxWidth(),
                     value = text,
@@ -99,7 +102,7 @@ fun ComposeBox(
             }
             Column(modifier = Modifier.weight(0.15f)) {
                 Button(onClick = {
-                    dispatchEvent(ChatAction.SendButtonClicked(text))
+                    dispatchEvent(ai.flox.chat.model.ChatAction.SendButtonClicked(text))
                     text = ""
                 }) {
                     Text(">")
@@ -113,7 +116,9 @@ fun ComposeBox(
 fun ChatMessage(
     message: ChatMessage
 ) {
-    Column(modifier = Modifier.padding(16.dp).fillMaxWidth()) {
+    Column(modifier = Modifier
+        .padding(16.dp)
+        .fillMaxWidth()) {
         Box(
             modifier = Modifier
                 .align(if (message.isUser) Alignment.End else Alignment.Start)

@@ -20,6 +20,8 @@ org-jetbrains-kotlin-jvm = "1.9.0"
 ui-tooling = "1.5.4"
 constraintlayout = "2.1.4"
 constraintlayoutCompose = "1.0.1"
+material = "1.9.0"
+navigation-compose = "2.7.6"
 
 [libraries]
 core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "core-ktx" }
@@ -35,7 +37,6 @@ activity-compose = { group = "androidx.activity", name = "activity-compose", ver
 appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
 androidx-constraintlayout = { group = "androidx.constraintlayout", name = "constraintlayout", version.ref = "constraintlayout" }
 
-
 # Compose
 compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "compose-bom" }
 ui = { group = "androidx.compose.ui", name = "ui" }
@@ -47,6 +48,7 @@ ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
 compose-material = { group = "androidx.compose.material3", name = "material3" }
 constraintlayout-compose = { group = "androidx.constraintlayout", name = "constraintlayout-compose", version.ref = "constraintlayoutCompose" }
 androidx-ui-tooling = { group = "androidx.compose.ui", name = "ui-tooling", version.ref = "ui-tooling" }
+navigation-compose = { group ="androidx.navigation", name = "navigation-compose", version.ref = "navigation-compose"}
 
 #Hilt
 hilt = { group = "com.google.dagger", name = "hilt-android", version.ref = "hilt" }
@@ -63,6 +65,7 @@ room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }
 
 android-gradle-plugin = { module = "com.android.tools.build:gradle", version.ref = "agp" }
 kotlin-gradle-plugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
+material = { group = "com.google.android.material", name = "material", version.ref = "material" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }

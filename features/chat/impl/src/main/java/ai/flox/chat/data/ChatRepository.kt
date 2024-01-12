@@ -20,24 +20,24 @@ class ChatRepository @Inject constructor(
     private val chatDAO: ChatDAO
 ) {
 
-    fun getChatMessages(): Flow<ChatAction> {
+    fun getChatMessages(): Flow<ai.flox.chat.model.ChatAction> {
         return flow {
             emit(
-                ChatAction.LoadMessages(
+                ai.flox.chat.model.ChatAction.LoadMessages(
                     Resource.Success(
                         chatDAO.getAll().map { it.toDomain() })
                 )
             )
         }.flowOn(Dispatchers.IO).catch {
-            emit(ChatAction.LoadMessages(Resource.Failure(Exception(it))))
+            emit(ai.flox.chat.model.ChatAction.LoadMessages(Resource.Failure(Exception(it))))
         }
     }
 
-    fun sendMessage(message: ChatMessage): Flow<ChatAction> {
+    fun sendMessage(message: ChatMessage): Flow<ai.flox.chat.model.ChatAction> {
         return flow {
             chatDAO.insertAll(message.toLocal())
             emit(
-                ChatAction.CreateOrUpdateMessages(
+                ai.flox.chat.model.ChatAction.CreateOrUpdateMessages(
                     Resource.Success(
                         listOf(message)
                     )
@@ -48,14 +48,14 @@ class ChatRepository @Inject constructor(
                 response.data?.let {
                     chatDAO.insertAll(it.toDomain().toLocal())
                     emit(
-                        ChatAction.CreateOrUpdateMessages(
+                        ai.flox.chat.model.ChatAction.CreateOrUpdateMessages(
                             Resource.Success(
                                 listOf(message.copy(messageState = SyncStatus.COMPLETED))
                             )
                         )
                     )
                     emit(
-                        ChatAction.CreateOrUpdateMessages(
+                        ai.flox.chat.model.ChatAction.CreateOrUpdateMessages(
                             Resource.Success(
                                 listOf(it.toDomain().copy(messageState = SyncStatus.COMPLETED))
                             )
@@ -64,7 +64,7 @@ class ChatRepository @Inject constructor(
                 }
             } else if (response is NetworkResource.Failure) {
                 emit(
-                    ChatAction.CreateOrUpdateMessages(
+                    ai.flox.chat.model.ChatAction.CreateOrUpdateMessages(
                         Resource.Failure(
                             error = response.error,
                             data = listOf(message.copy(messageState = SyncStatus.FAILED_PERMANENTLY))
@@ -74,7 +74,7 @@ class ChatRepository @Inject constructor(
             }
         }.flowOn(Dispatchers.IO).catch {
             emit(
-                ChatAction.CreateOrUpdateMessages(
+                ai.flox.chat.model.ChatAction.CreateOrUpdateMessages(
                     Resource.Failure(
                         Exception(it),
                         listOf(message.copy(messageState = SyncStatus.FAILED_PERMANENTLY))

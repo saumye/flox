@@ -41,7 +41,8 @@ class ChatListViewModel @Inject constructor(
 
             is ChatAction.LoadMessages -> {
                 if (action.resource is Resource.Success<ChatMessage>) {
-                    action.resource.data?.let {
+                    val res = action.resource as Resource.Success<ChatMessage>
+                    res.data?.let {
                         state.copy(recentChatList = it.associateBy { msg -> msg.id }).noEffect()
                     } ?: state.noEffect()
                 } else {
@@ -51,7 +52,8 @@ class ChatListViewModel @Inject constructor(
 
             is ChatAction.CreateOrUpdateMessages -> {
                 if (action.resource is Resource.Success<ChatMessage>) {
-                    action.resource.data?.let { messages ->
+                    val res = action.resource as Resource.Success<ChatMessage>
+                    res.data?.let { messages ->
                         state.recentChatList?.let {
                             val map = it.toMutableMap()
                             for (message in messages) {
