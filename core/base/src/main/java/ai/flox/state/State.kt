@@ -1,7 +1,7 @@
 package ai.flox.state
 
 /**
- * Marker Interface for State objects understoond by @see [ai.flox.arch.Store],
+ * Marker Interface for State objects understood by @see [ai.flox.arch.Store],
  * to be extended later if more functionality needs to be enforced in State objects
  */
 interface State
@@ -50,3 +50,8 @@ sealed interface Resource<T> {
  * by @see [Action.UI]
  */
 typealias ComponentIdentifier = String
+
+/**
+ * State identifier in the larger map of feature states
+ */
+typealias StateKey = String

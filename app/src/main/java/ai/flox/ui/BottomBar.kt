@@ -1,10 +1,8 @@
 package ai.flox.ui
 
 import ai.flox.BottomTabs
-import ai.flox.R
 import ai.flox.model.AppAction
 import ai.flox.state.Action
-import androidx.annotation.DrawableRes
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -15,8 +13,6 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.painterResource
-import androidx.navigation.NavController
-import androidx.navigation.NavGraph.Companion.findStartDestination
 
 @Composable
 fun BottomBar(tabs: List<BottomTabs>, dispatch: (Action) -> Unit) {

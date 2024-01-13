@@ -6,6 +6,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
@@ -13,20 +14,20 @@ import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 
 internal class MutableStateFlowStore<S: State, A: Action> private constructor(
-    override val state: Flow<S>,
+    override val state: StateFlow<S>,
     private val sendFn: (List<A>) -> Unit,
 ) : Store<S, A> {
 
-    override fun <ViewState: S, ViewAction : A> view(
-        mapToLocalState: (State) -> ViewState,
-        mapToGlobalAction: (ViewAction) -> A?,
-    ): Store<ViewState, ViewAction> = MutableStateFlowStore(
-        state = state.map { mapToLocalState(it) }.distinctUntilChanged(),
-        sendFn = { actions ->
-            val globalActions = actions.mapNotNull(mapToGlobalAction)
-            sendFn(globalActions)
-        },
-    )
+//    override fun <ViewState: S, ViewAction : A> view(
+//        mapToLocalState: (State) -> ViewState,
+//        mapToGlobalAction: (ViewAction) -> A?,
+//    ): Store<ViewState, ViewAction> = MutableStateFlowStore(
+//        state = state.map { mapToLocalState(it) }.distinctUntilChanged(),
+//        sendFn = { actions ->
+//            val globalActions = actions.mapNotNull(mapToGlobalAction)
+//            sendFn(globalActions)
+//        },
+//    )
 
     companion object {
         fun <S: State, A: Action> create(
@@ -63,9 +64,7 @@ internal class MutableStateFlowStore<S: State, A: Action> private constructor(
         }
     }
 
-    override fun dispatch(actions: List<A>) {
-        if (actions.isEmpty()) return
-
-        sendFn(actions)
+    override fun dispatch(vararg actions: A) {
+        sendFn(actions.asList())
     }
 }

@@ -1,6 +1,7 @@
 package ai.flox
 
 import ai.flox.state.State
+import ai.flox.state.StateKey
 import androidx.annotation.DrawableRes
 import androidx.lifecycle.Lifecycle
 
@@ -14,6 +15,8 @@ data class AppState(
     val userState: UserState = UserState.NoUser,
     val networkState: NetworkState = NetworkState.Offline
 ) : State {
+    //override val stateKey: StateKey = "appState"
+
     companion object {
         const val stateKey = "appState"
     }
@@ -25,8 +28,8 @@ enum class BottomTabs(
     val icon: Int,
     val route: String
 ) {
-    HOME("Home", R.drawable.ic_baseline_home, "home"),
-    CHATS("Chats", R.drawable.ic_baseline_settings, "conversations")
+    HOME("Home", R.drawable.ic_launcher_foreground, "home"),
+    CHATS("Chats", R.drawable.ic_launcher_background, "conversations")
 }
 
 sealed interface UserState {

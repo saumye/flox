@@ -4,6 +4,8 @@ import ai.flox.arch.Store
 import ai.flox.chat.model.ChatAction
 import ai.flox.chat.model.ChatMessage
 import ai.flox.chat.model.ChatState
+import ai.flox.state.Action
+import ai.flox.state.State
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -32,13 +34,15 @@ import androidx.compose.ui.unit.dp
 import androidx.constraintlayout.compose.ConstraintLayout
 import androidx.constraintlayout.compose.Dimension
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.flow.StateFlow
 
 
 @Composable
 fun ChatListScreen(
-    store: Store<ChatState, ChatAction>
+    stateFlow: StateFlow<ChatState>,
+    store: Store<State, Action>
 ) {
-    val state: ChatState by store.state.collectAsStateWithLifecycle(initialValue = ChatState())
+    val state: ChatState by stateFlow.collectAsStateWithLifecycle()
     state.recentChatList?.let {
         ConstraintLayout(modifier = Modifier.fillMaxSize()) {
             val (messages, chatBox) = createRefs()

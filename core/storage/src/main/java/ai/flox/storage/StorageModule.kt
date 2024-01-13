@@ -1,6 +1,7 @@
 package ai.flox.storage
 
 import ai.flox.storage.chat.ChatDAO
+import ai.flox.storage.conversation.ConversationDAO
 import android.content.Context
 import androidx.room.Room
 import dagger.Module
@@ -27,5 +28,11 @@ object StorageModule {
     @Provides
     fun provideChatDAO(database: AppDatabase): ChatDAO {
         return database.chatDao()
+    }
+
+    @Singleton
+    @Provides
+    fun provideConversationDAO(database: AppDatabase): ConversationDAO {
+        return database.conversationDAO()
     }
 }

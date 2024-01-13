@@ -2,8 +2,6 @@ package ai.flox.conversation.ui
 
 import ai.flox.conversation.model.Conversation
 import ai.flox.conversation.model.ConversationState
-import ai.flox.state.Action
-import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,19 +13,20 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.constraintlayout.compose.ConstraintLayout
 import androidx.constraintlayout.compose.Dimension
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.flow.StateFlow
 
 @Composable
-fun ConversationListScreen(
-    modifier: Modifier,
-    state: ConversationState,
-    dispatchEvent: (Action) -> Unit
+fun  ConversationListScreen(
+    stateFlow: StateFlow<ConversationState>
 ) {
-    Log.d("ConversationListScreen", "State: $state")
+    val state: ConversationState by stateFlow.collectAsStateWithLifecycle()
     state.recentConversationList.let {
         ConstraintLayout(modifier = Modifier.fillMaxSize()) {
             val (messages, chatBox) = createRefs()
@@ -58,7 +57,9 @@ fun ConversationListScreen(
 fun Conversation(
     conversation: Conversation
 ) {
-    Column(modifier = Modifier.padding(16.dp).fillMaxWidth()) {
+    Column(modifier = Modifier
+        .padding(16.dp)
+        .fillMaxWidth()) {
         Box(
             modifier = Modifier
                 .background(Color.Black)

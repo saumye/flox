@@ -5,21 +5,28 @@ import ai.flox.arch.Reducer
 import ai.flox.arch.noEffect
 import ai.flox.arch.withFlowEffect
 import ai.flox.model.AppAction
+import ai.flox.state.Action
+import ai.flox.state.State
 import androidx.navigation.NavController
 import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.NavHostController
 import kotlinx.coroutines.flow.flow
 import javax.inject.Inject
 
 class NavigationReducer @Inject constructor(
-    val navController: NavController
+    private val navController: NavHostController
 ) : Reducer<AppState, AppAction> {
     override fun reduce(state: AppState, action: AppAction): ReduceResult<AppState, AppAction> {
         return when (action) {
             is AppAction.BottomBarClicked -> {
-                val tab = state.bottomTabs[action.id]
-                state.copy(selectedBottomTab = tab).withFlowEffect(
+                val selectedTab = state.bottomBarState.bottomTabs[action.id]
+                state.copy(
+                    bottomBarState = state.bottomBarState.copy(
+                        selectedBottomTab = selectedTab
+                    )
+                ).withFlowEffect(
                     flow {
-                        emit(AppAction.Navigate(tab.route))
+                        emit(AppAction.Navigate(selectedTab.route))
                     }
                 )
             }

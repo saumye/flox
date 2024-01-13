@@ -1,29 +1,30 @@
-package ai.flox.chat
+package ai.flox.conversation
 
 import ai.flox.Navigable
 import ai.flox.arch.Store
-import ai.flox.chat.model.ChatAction
-import ai.flox.chat.model.ChatState
-import ai.flox.chat.ui.ChatListScreen
+import ai.flox.conversation.model.ConversationState
+import ai.flox.conversation.ui.ConversationListScreen
 import ai.flox.state.Action
 import ai.flox.state.State
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.composable
+import kotlinx.coroutines.flow.StateFlow
 
-class ChatRoutes(
-    private val store: Store<State, Action>
+/**
+ * Configures all navigation routes to Composables in conversation
+ */
+class ConversationNavigator(
+    private val state: StateFlow<ConversationState>
 ) : Navigable {
     override fun registerGraph(
         navGraphBuilder: NavGraphBuilder,
         navController: NavHostController,
         modifier: Modifier
     ) {
-        navGraphBuilder.composable("chat") {
-            ChatListScreen(store.view(
-                {}, {}
-            ) )
+        navGraphBuilder.composable(ConversationRoutes.conversations) {
+            ConversationListScreen(state)
         }
     }
 }
