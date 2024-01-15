@@ -28,8 +28,8 @@ enum class BottomTab(
     val icon: Int,
     val route: String
 ) {
-    CHATS("Conversations", R.drawable.ic_launcher_foreground, ChatRoutes.chat),
-    CONVERSATIONS("Chats", R.drawable.ic_launcher_background, ConversationRoutes.conversations)
+    CHATS("Home", R.drawable.gallery, "home"),
+    CONVERSATIONS("Conversations", R.drawable.message, ConversationRoutes.conversations)
 }
 
 sealed interface UserState {

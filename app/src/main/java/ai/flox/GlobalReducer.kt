@@ -25,7 +25,7 @@ class GlobalReducer : Reducer<AppState, Action> {
                     )
                 ).withFlowEffect(
                     flow {
-                        emit(AppAction.Navigate(selectedTab.route, action.navController))
+                        emit(AppAction.Navigate(action.navController, selectedTab.route))
                     }
                 )
             }

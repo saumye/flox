@@ -5,7 +5,7 @@ import ai.flox.state.Action
 import androidx.navigation.NavController
 
 sealed interface AppAction : Action {
-    data class Navigate(val route: String, val navController: NavController) : Action.UI.NavigateEvent, AppAction {
+    data class Navigate(val navController: NavController, val route: String) : Action.UI.NavigateEvent, AppAction {
         override val componentIdentifier = AppIds.BottomBarIcon
     }
 

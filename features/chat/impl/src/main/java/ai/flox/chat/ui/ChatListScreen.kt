@@ -43,10 +43,10 @@ fun ChatListScreen(
     store: Store<State, Action>
 ) {
     val state: ChatState by stateFlow.collectAsStateWithLifecycle()
-    state.recentChatList?.let {
-        ConstraintLayout(modifier = Modifier.fillMaxSize()) {
-            val (messages, chatBox) = createRefs()
-            val listState = rememberLazyListState()
+    ConstraintLayout(modifier = Modifier.fillMaxSize()) {
+        val (messages, chatBox) = createRefs()
+        val listState = rememberLazyListState()
+        state.recentChatList?.let {
             LazyColumn(
                 userScrollEnabled = true,
                 state = listState,
@@ -64,18 +64,18 @@ fun ChatListScreen(
                     ChatMessage(item)
                 }
             }
-            ComposeBox(
-                composeState = state.composeState,
-                dispatchEvent = store::dispatch,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .constrainAs(chatBox) {
-                        bottom.linkTo(parent.bottom)
-                        start.linkTo(parent.start)
-                        end.linkTo(parent.end)
-                    }
-            )
         }
+        ComposeBox(
+            composeState = state.composeState,
+            dispatchEvent = store::dispatch,
+            modifier = Modifier
+                .fillMaxWidth()
+                .constrainAs(chatBox) {
+                    bottom.linkTo(parent.bottom)
+                    start.linkTo(parent.start)
+                    end.linkTo(parent.end)
+                }
+        )
     }
 }
 
@@ -88,13 +88,17 @@ fun ComposeBox(
 ) {
     var text by rememberSaveable { mutableStateOf(composeState.userInput) }
     Row(modifier = modifier) {
-        Row(modifier = Modifier
-            .weight(1f, false)
-            .fillMaxWidth()
-            .wrapContentHeight()) {
-            Column(modifier = Modifier
-                .weight(0.85f)
-                .fillMaxWidth()) {
+        Row(
+            modifier = Modifier
+                .weight(1f, false)
+                .fillMaxWidth()
+                .wrapContentHeight()
+        ) {
+            Column(
+                modifier = Modifier
+                    .weight(0.85f)
+                    .fillMaxWidth()
+            ) {
                 TextField(
                     modifier = Modifier.fillMaxWidth(),
                     value = text,
@@ -122,9 +126,11 @@ fun ComposeBox(
 fun ChatMessage(
     message: ChatMessage
 ) {
-    Column(modifier = Modifier
-        .padding(16.dp)
-        .fillMaxWidth()) {
+    Column(
+        modifier = Modifier
+            .padding(16.dp)
+            .fillMaxWidth()
+    ) {
         Box(
             modifier = Modifier
                 .align(if (message.isUser) Alignment.End else Alignment.Start)
