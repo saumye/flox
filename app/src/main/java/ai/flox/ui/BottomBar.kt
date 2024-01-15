@@ -1,6 +1,6 @@
 package ai.flox.ui
 
-import ai.flox.BottomTabs
+import ai.flox.BottomTab
 import ai.flox.model.AppAction
 import ai.flox.state.Action
 import androidx.compose.material3.Icon
@@ -13,9 +13,10 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.painterResource
+import androidx.navigation.NavController
 
 @Composable
-fun BottomBar(tabs: List<BottomTabs>, dispatch: (Action) -> Unit) {
+fun BottomBar(tabs: List<BottomTab>, navController: NavController, dispatch: (Action) -> Unit) {
 
     var navigationSelectedItem by remember { mutableIntStateOf(0) }
     NavigationBar {
@@ -33,7 +34,7 @@ fun BottomBar(tabs: List<BottomTabs>, dispatch: (Action) -> Unit) {
                 },
                 onClick = {
                     navigationSelectedItem = index
-                    dispatch(AppAction.Navigate(navigationItem.route))
+                    dispatch(AppAction.BottomBarClicked(BottomTab.entries[index], navController))
                 }
             )
         }

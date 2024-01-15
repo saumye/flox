@@ -1,7 +1,8 @@
 package ai.flox
 
+import ai.flox.chat.ChatRoutes
+import ai.flox.conversation.ConversationRoutes
 import ai.flox.state.State
-import ai.flox.state.StateKey
 import androidx.annotation.DrawableRes
 import androidx.lifecycle.Lifecycle
 
@@ -15,35 +16,31 @@ data class AppState(
     val userState: UserState = UserState.NoUser,
     val networkState: NetworkState = NetworkState.Offline
 ) : State {
-    //override val stateKey: StateKey = "appState"
 
     companion object {
         const val stateKey = "appState"
     }
 }
 
-enum class BottomTabs(
+enum class BottomTab(
     val title: String,
     @DrawableRes
     val icon: Int,
     val route: String
 ) {
-    HOME("Home", R.drawable.ic_launcher_foreground, "home"),
-    CHATS("Chats", R.drawable.ic_launcher_background, "conversations")
+    CHATS("Conversations", R.drawable.ic_launcher_foreground, ChatRoutes.chat),
+    CONVERSATIONS("Chats", R.drawable.ic_launcher_background, ConversationRoutes.conversations)
 }
 
 sealed interface UserState {
     object NoUser: UserState
-    object LoggedIn: UserState
-    object SignInError: UserState
 }
 
 sealed interface NetworkState {
-    object Connected: NetworkState
     object Offline: NetworkState
 }
 
 data class BottomBarState(
-    val selectedBottomTab: BottomTabs = BottomTabs.CHATS,
-    val bottomTabs: List<BottomTabs> = BottomTabs.values().toList()
+    val selectedBottomTab: BottomTab = BottomTab.CHATS,
+    val bottomTabs: List<BottomTab> = BottomTab.entries.toList()
 )

@@ -64,7 +64,9 @@ fun ChatListScreen(
                     ChatMessage(item)
                 }
             }
-            ComposeBox(state.composeState, dispatchEvent = store::dispatch,
+            ComposeBox(
+                composeState = state.composeState,
+                dispatchEvent = store::dispatch,
                 modifier = Modifier
                     .fillMaxWidth()
                     .constrainAs(chatBox) {
@@ -106,7 +108,7 @@ fun ComposeBox(
             }
             Column(modifier = Modifier.weight(0.15f)) {
                 Button(onClick = {
-                    dispatchEvent(ai.flox.chat.model.ChatAction.SendButtonClicked(text))
+                    dispatchEvent(ChatAction.SendButtonClicked(text))
                     text = ""
                 }) {
                     Text(">")

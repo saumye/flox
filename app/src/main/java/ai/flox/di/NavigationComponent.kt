@@ -10,6 +10,9 @@ import ai.flox.conversation.model.ConversationState
 import ai.flox.state.Action
 import ai.flox.state.State
 import ai.flox.state.map
+import androidx.compose.ui.Modifier
+import androidx.navigation.NavGraphBuilder
+import androidx.navigation.NavHostController
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -21,7 +24,17 @@ import kotlinx.coroutines.Dispatchers
 @Module
 @InstallIn(SingletonComponent::class)
 object NavigationComponent {
-
+    fun NavGraphBuilder.register(
+        route: Navigable,
+        navController: NavHostController,
+        modifier: Modifier = Modifier
+    ) {
+        route.registerGraph(
+            navGraphBuilder = this,
+            navController = navController,
+            modifier = modifier
+        )
+    }
     @Provides
     @IntoSet
     fun provideChatRoutes(store: Store<State, Action>): Navigable {

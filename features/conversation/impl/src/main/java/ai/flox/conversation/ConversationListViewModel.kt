@@ -9,6 +9,7 @@ import ai.flox.conversation.data.ConversationRepository
 import ai.flox.conversation.model.Conversation
 import ai.flox.conversation.model.ConversationAction
 import ai.flox.conversation.model.ConversationState
+import ai.flox.state.Action
 import ai.flox.state.Resource
 import androidx.lifecycle.ViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -17,14 +18,17 @@ import javax.inject.Inject
 @HiltViewModel
 class ConversationListViewModel @Inject constructor(
     private val chatRepository: ConversationRepository
-) : ViewModel(), Reducer<ConversationState, ConversationAction> {
+) : ViewModel(), Reducer<ConversationState, Action> {
 
     @Pure
     @Synchronized
     override fun reduce(
         state: ConversationState,
-        action: ConversationAction
-    ): ReduceResult<ConversationState, ConversationAction> {
+        action: Action
+    ): ReduceResult<ConversationState, Action> {
+        if(action !is ConversationAction) {
+            return state.noEffect()
+        }
         return when (action) {
             is ConversationAction.ConversationClicked -> {
                 state.noEffect()//withFlowEffect(flow {emit(ChatAc)})

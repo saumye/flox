@@ -29,7 +29,6 @@ class PullbackReducer<ChildState : State, ParentState : State, ChildAction : Act
     private val mapToChildState: (ParentState) -> ChildState,
     private val mapToParentAction: (ChildAction) -> ParentAction,
     private val mapToParentState: (ParentState, ChildState) -> ParentState
-
 ) : Reducer<ParentState, ParentAction> {
     override fun reduce(
         state: ParentState,
@@ -69,11 +68,11 @@ class ForEachReducer<ChildState : State, ParentState : State, ChildAction : Acti
         state: ParentState,
         action: ParentAction,
     ): ReduceResult<ParentState, ParentAction> {
-        val (id: ID, ChildAction: ChildAction) = mapToChildAction(action) ?: return parentReducer.reduce(state, action)
+        val (id: ID, childAction: ChildAction) = mapToChildAction(action) ?: return parentReducer.reduce(state, action)
         val mapToChildState: (ParentState) -> ChildState = { parentState: ParentState -> mapToChildState(parentState, id) }
-        val mapToState: (ParentState, ChildState) -> ParentState = { parentState: ParentState, ChildState: ChildState -> mapToParentState(parentState, ChildState!!, id) }
+        val mapToState: (ParentState, ChildState) -> ParentState = { parentState: ParentState, childState: ChildState -> mapToParentState(parentState, childState, id) }
 
-        val (childState, childEffect) = childReducer.reduce(mapToChildState(state), ChildAction)
+        val (childState, childEffect) = childReducer.reduce(mapToChildState(state), childAction)
         val (parentState, parentEffect) = parentReducer.reduce(mapToState(state, childState), action)
 
         return ReduceResult(

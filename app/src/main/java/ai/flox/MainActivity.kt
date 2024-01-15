@@ -2,7 +2,7 @@ package ai.flox
 
 import ai.flox.arch.Store
 import ai.flox.chat.ChatRoutes
-import ai.flox.chat.model.ChatAction
+import ai.flox.di.NavigationComponent.register
 import ai.flox.state.Action
 import ai.flox.state.State
 import ai.flox.state.map
@@ -19,8 +19,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.navigation.NavGraphBuilder
-import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.rememberNavController
 import dagger.hilt.android.AndroidEntryPoint
@@ -38,30 +36,15 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var routes: Set<@JvmSuppressWildcards Navigable>
 
-    @Inject
-    lateinit var navController: NavHostController
-
-    private fun NavGraphBuilder.register(
-        route: Navigable,
-        navController: NavHostController,
-        modifier: Modifier = Modifier
-    ) {
-        route.registerGraph(
-            navGraphBuilder = this,
-            navController = navController,
-            modifier = modifier
-        )
-    }
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val appState: StateFlow<AppState> = store.state.map(CoroutineScope(Dispatchers.Main)) { (if (it is AppState) it else null)!! }
         setContent {
-            val navController = rememberNavController()
             val state: AppState by appState.collectAsStateWithLifecycle()
+            val navController = rememberNavController()
             FloxTheme {
                 Scaffold(
-                    bottomBar = { BottomBar(state.bottomBarState.bottomTabs, store::dispatch) }
+                    bottomBar = { BottomBar(state.bottomBarState.bottomTabs, navController, store::dispatch) }
                 ) { innerPadding ->
                     Column(
                         modifier = Modifier.padding(innerPadding),
@@ -79,6 +62,6 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
-        store.dispatch(ChatAction.RecentChatsRendered)
+        //store.dispatch(AppAction.Navigate(ChatRoutes.chat))
     }
 }
