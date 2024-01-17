@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
+import java.util.Date
 import javax.inject.Inject
 
 class ChatRepository @Inject constructor(
@@ -20,24 +21,24 @@ class ChatRepository @Inject constructor(
     private val chatDAO: ChatDAO
 ) {
 
-    fun getChatMessages(): Flow<ai.flox.chat.model.ChatAction> {
+    fun getChatMessages(): Flow<ChatAction> {
         return flow {
             emit(
-                ai.flox.chat.model.ChatAction.LoadMessages(
+                ChatAction.LoadMessages(
                     Resource.Success(
                         chatDAO.getAll().map { it.toDomain() })
                 )
             )
         }.flowOn(Dispatchers.IO).catch {
-            emit(ai.flox.chat.model.ChatAction.LoadMessages(Resource.Failure(Exception(it))))
+            emit(ChatAction.LoadMessages(Resource.Failure(Exception(it))))
         }
     }
 
-    fun sendMessage(message: ChatMessage): Flow<ai.flox.chat.model.ChatAction> {
+    fun sendMessage(message: ChatMessage): Flow<ChatAction> {
         return flow {
             chatDAO.insertAll(message.toLocal())
             emit(
-                ai.flox.chat.model.ChatAction.CreateOrUpdateMessages(
+                ChatAction.CreateOrUpdateMessages(
                     Resource.Success(
                         listOf(message)
                     )
@@ -46,25 +47,25 @@ class ChatRepository @Inject constructor(
             val response = openAIService.completions(OpenAIRequest.fromDomain(message.message))
             if (response is NetworkResource.Success) {
                 response.data?.let {
-                    chatDAO.insertAll(it.toDomain().toLocal())
+                    chatDAO.insertAll(it.toDomain(Date(System.currentTimeMillis())).toLocal())
                     emit(
-                        ai.flox.chat.model.ChatAction.CreateOrUpdateMessages(
+                        ChatAction.CreateOrUpdateMessages(
                             Resource.Success(
                                 listOf(message.copy(messageState = SyncStatus.COMPLETED))
                             )
                         )
                     )
                     emit(
-                        ai.flox.chat.model.ChatAction.CreateOrUpdateMessages(
+                        ChatAction.CreateOrUpdateMessages(
                             Resource.Success(
-                                listOf(it.toDomain().copy(messageState = SyncStatus.COMPLETED))
+                                listOf(it.toDomain(Date(System.currentTimeMillis())).copy(messageState = SyncStatus.COMPLETED))
                             )
                         )
                     )
                 }
             } else if (response is NetworkResource.Failure) {
                 emit(
-                    ai.flox.chat.model.ChatAction.CreateOrUpdateMessages(
+                    ChatAction.CreateOrUpdateMessages(
                         Resource.Failure(
                             error = response.error,
                             data = listOf(message.copy(messageState = SyncStatus.FAILED_PERMANENTLY))
@@ -74,7 +75,7 @@ class ChatRepository @Inject constructor(
             }
         }.flowOn(Dispatchers.IO).catch {
             emit(
-                ai.flox.chat.model.ChatAction.CreateOrUpdateMessages(
+                ChatAction.CreateOrUpdateMessages(
                     Resource.Failure(
                         Exception(it),
                         listOf(message.copy(messageState = SyncStatus.FAILED_PERMANENTLY))

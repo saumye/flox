@@ -8,5 +8,6 @@ import androidx.room.PrimaryKey
 data class ChatMessageEntity(
     @ColumnInfo(name = "message") val message: String,
     @ColumnInfo(name = "isUser") val isUser: Boolean,
+    @ColumnInfo(name = "timestamp") val timestamp: Long,
     @PrimaryKey @ColumnInfo(name = "id") val id: String,
 )

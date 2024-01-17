@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.StateFlow
  * Configures all navigation routes to Composables in conversation
  */
 class ConversationNavigator(
+    private val store: Store<State, Action>,
     private val state: StateFlow<ConversationState>
 ) : Navigable {
     override fun registerGraph(
@@ -24,7 +25,7 @@ class ConversationNavigator(
         modifier: Modifier
     ) {
         navGraphBuilder.composable(ConversationRoutes.conversations) {
-            ConversationListScreen(state)
+            ConversationListScreen(state, store)
         }
     }
 }

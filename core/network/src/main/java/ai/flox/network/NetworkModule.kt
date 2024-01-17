@@ -21,6 +21,6 @@ class NetworkModule {
     @Singleton
     @Provides
     fun provideOkHttpClient(): OkHttpClient {
-        return OkHttpClient.Builder().addInterceptor(AuthenticationInterceptor(ai.flox.network.BuildConfig.OPENAI_APIKEY)).build()
+        return OkHttpClient.Builder().addInterceptor(AuthenticationInterceptor(BuildConfig.OPENAIAPI_KEY)).build()
     }
 }

@@ -8,6 +8,7 @@ import ai.flox.arch.Reducer
 import ai.flox.arch.Store
 import ai.flox.arch.createStore
 import ai.flox.chat.model.ChatState
+import ai.flox.home.model.HomeState
 import ai.flox.conversation.model.ConversationState
 import ai.flox.state.Action
 import ai.flox.state.State
@@ -95,14 +96,12 @@ object MainModule {
                         mapToParentState = { state, _ -> state },
                     ),
                     PullbackReducer(
-                        innerReducer =
-                        reducers[ChatState.stateKey] as Reducer<ChatState, Action>,
+                        innerReducer = reducers[ChatState.stateKey] as Reducer<ChatState, Action>,
                         mapToChildAction = { action -> action },
                         mapToChildState = { state -> state.featureStates[ChatState.stateKey] as ChatState },
                         mapToParentAction = { action -> action },
                         mapToParentState = { state, chatState ->
-                            state.copy(
-                                featureStates = featureStates.toMutableMap()
+                            state.copy(featureStates = state.featureStates.toMutableMap()
                                     .apply { put(ChatState.stateKey, chatState) })
                         },
                     ),
@@ -112,14 +111,18 @@ object MainModule {
                         mapToChildState = { state -> state.featureStates[ConversationState.stateKey] as ConversationState },
                         mapToParentAction = { action -> action },
                         mapToParentState = { state, conversationState ->
-                            state.copy(
-                                featureStates = featureStates.toMutableMap()
-                                    .apply {
-                                        put(
-                                            ConversationState.stateKey,
-                                            conversationState
-                                        )
-                                    })
+                            state.copy(featureStates = state.featureStates.toMutableMap()
+                                    .apply { put(ConversationState.stateKey, conversationState) })
+                        },
+                    ),
+                    PullbackReducer(
+                        innerReducer = reducers[HomeState.stateKey] as Reducer<HomeState, Action>,
+                        mapToChildAction = { action -> action },
+                        mapToChildState = { state -> state.featureStates[HomeState.stateKey] as HomeState },
+                        mapToParentAction = { action -> action },
+                        mapToParentState = { state, homeState ->
+                            state.copy(featureStates = state.featureStates.toMutableMap()
+                                    .apply { put(HomeState.stateKey, homeState) })
                         },
                     )
                 )

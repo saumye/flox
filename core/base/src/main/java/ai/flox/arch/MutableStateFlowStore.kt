@@ -55,7 +55,8 @@ internal class MutableStateFlowStore<S: State, A: Action> private constructor(
                             .onEach { action -> send(listOf(action)) }
                             .launchIn(CoroutineScope(Dispatchers.Main))
                     } catch (e: Throwable) {
-                        // exceptionHandler.handleEffectException(e)//TODO
+                        Log.d("MutableStateFlowStore", e.message+""+e.localizedMessage)
+                        ReduceResult(state, noEffect)//TODO exceptionHandler.handleReduceException(e))
                     }
                 }
             }

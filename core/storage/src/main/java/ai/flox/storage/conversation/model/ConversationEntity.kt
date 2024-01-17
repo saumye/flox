@@ -7,7 +7,7 @@ import androidx.room.PrimaryKey
 @Entity(tableName = "conversation")
 data class ConversationEntity(
     @ColumnInfo(name = "title") val title: String,
-    @ColumnInfo(name = "lastMessage") val lastMessageTime: Long,
+    @ColumnInfo(name = "lastMessageTime") val lastMessageTime: Long,
     @PrimaryKey @ColumnInfo(name = "id") val id: String,
 
 )

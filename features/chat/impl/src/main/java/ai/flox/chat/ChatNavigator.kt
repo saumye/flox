@@ -2,6 +2,7 @@ package ai.flox.chat
 
 import ai.flox.Navigable
 import ai.flox.arch.Store
+import ai.flox.chat.model.ChatAction
 import ai.flox.chat.model.ChatState
 import ai.flox.chat.ui.ChatListScreen
 import ai.flox.state.Action
@@ -27,5 +28,6 @@ class ChatNavigator(
         navGraphBuilder.composable(ChatRoutes.chat) {
             ChatListScreen(state, store)
         }
+
     }
 }

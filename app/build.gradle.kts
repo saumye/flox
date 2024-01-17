@@ -27,6 +27,8 @@ dependencies {
     implementation(project(":features:chat:impl"))
     implementation(project(":features:conversation:api"))
     implementation(project(":features:conversation:impl"))
+    implementation(project(":features:home:api"))
+    implementation(project(":features:home:impl"))
     implementation(project(":core:storage"))
     implementation(project(":core:base"))
 }

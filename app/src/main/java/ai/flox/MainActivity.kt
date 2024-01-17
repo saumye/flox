@@ -2,7 +2,7 @@ package ai.flox
 
 import ai.flox.arch.Store
 import ai.flox.chat.ChatRoutes
-import ai.flox.conversation.ConversationRoutes
+import ai.flox.home.HomeRoutes
 import ai.flox.conversation.ui.ConversationListScreen
 import ai.flox.di.NavigationComponent.register
 import ai.flox.model.AppAction
@@ -18,10 +18,12 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -29,8 +31,10 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.constraintlayout.compose.ConstraintLayout
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
@@ -47,6 +51,14 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var routes: Set<@JvmSuppressWildcards Navigable>
 
+    @Composable
+    fun AppState.showBottomBar(navController: NavHostController): Boolean {
+        val navBackStackEntry by navController.currentBackStackEntryAsState()
+        return navBackStackEntry?.destination?.route?.let {
+            BottomTab.belongs(it)
+        } ?: false
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val appState: StateFlow<AppState> =
@@ -57,11 +69,13 @@ class MainActivity : ComponentActivity() {
             FloxTheme {
                 Scaffold(
                     bottomBar = {
-                        BottomBar(
-                            state.bottomBarState.bottomTabs,
-                            navController,
-                            store::dispatch
-                        )
+                        if (state.showBottomBar(navController)) {
+                            BottomBar(
+                                state.bottomBarState.bottomTabs,
+                                navController,
+                                store::dispatch
+                            )
+                        }
                     }
                 ) { innerPadding ->
                     Column(
@@ -79,21 +93,17 @@ class MainActivity : ComponentActivity() {
                                 )
                             }) {
                             Icon(
-                                painter = painterResource(id = R.drawable.create),
+                                painter = painterResource(id = R.drawable.create_chat),
+                                modifier = Modifier.size(24.dp),
                                 contentDescription = "Create Chat"
                             )
                         }
                         NavHost(
                             navController = navController,
-                            startDestination = "home"
+                            startDestination = HomeRoutes.home
                         ) {
                             for (route in routes) {
                                 register(route, navController, Modifier.padding(innerPadding))
-                            }
-                            composable("home") {
-                                ConstraintLayout(modifier = Modifier.fillMaxSize()) {
-                                    Text("HOME", modifier = Modifier.fillMaxSize())
-                                }
                             }
                         }
                     }

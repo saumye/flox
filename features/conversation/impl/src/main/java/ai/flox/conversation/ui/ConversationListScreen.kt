@@ -1,7 +1,11 @@
 package ai.flox.conversation.ui
 
+import ai.flox.arch.Store
 import ai.flox.conversation.model.Conversation
+import ai.flox.conversation.model.ConversationAction
 import ai.flox.conversation.model.ConversationState
+import ai.flox.state.Action
+import ai.flox.state.State
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,6 +17,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -24,9 +29,13 @@ import kotlinx.coroutines.flow.StateFlow
 
 @Composable
 fun  ConversationListScreen(
-    stateFlow: StateFlow<ConversationState>
+    stateFlow: StateFlow<ConversationState>,
+    store: Store<State, Action>
 ) {
     val state: ConversationState by stateFlow.collectAsStateWithLifecycle()
+    LaunchedEffect(state) {
+        store.dispatch(ConversationAction.RecentConversationRendered)
+    }
     state.recentConversationList.let {
         ConstraintLayout(modifier = Modifier.fillMaxSize()) {
             val (messages, chatBox) = createRefs()

@@ -13,6 +13,7 @@ import ai.flox.state.Action
 import ai.flox.state.Resource
 import androidx.lifecycle.ViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
+import java.util.Date
 import javax.inject.Inject
 
 @HiltViewModel
@@ -33,7 +34,8 @@ class ChatListViewModel @Inject constructor(
                         chatRepository.sendMessage(
                             ChatMessage(
                                 message = action.message,
-                                isUser = true
+                                isUser = true,
+                                timestamp = Date(System.currentTimeMillis())
                             )
                         )
                     )

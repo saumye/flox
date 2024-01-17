@@ -12,7 +12,8 @@ android {
         buildConfig = true
     }
     defaultConfig {
-        buildConfigField("String", "OPENAI_APIKEY", "\"" + gradleLocalProperties(rootDir).getProperty("OPENAI_APIKEY", "") + "\"")
+        buildConfigField("String", "OPENAIAPI_KEY", "\"" + gradleLocalProperties(rootDir).getProperty("OPENAIAPI_KEY", "") + "\"")
+        buildConfigField("String", "NEWSAPI_KEY", "\"" + gradleLocalProperties(rootDir).getProperty("NEWSAPI_KEY", "") + "\"")
     }
 }
 
