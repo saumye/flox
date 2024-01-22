@@ -9,30 +9,30 @@ Flux on Flow (Flox, for short) is a library for building Android applications vi
 
 ## What is the Flox and why should I use it?
 
-This library provides a few core tools that can be used to build applications of varying purpose and 
-complexity. It provides compelling stories that you can follow to solve many problems you encounter 
+This library provides a few core tools that can be used to build applications of varying purpose and
+complexity. It provides compelling stories that you can follow to solve many problems you encounter
 day-to-day when building applications, such as:
 
 * **State management**
-  <br> How to manage the state of your application using simple value types, and share state across 
+  <br> How to manage the state of your application using simple value types, and share state across
   many screens so that mutations in one screen can be immediately observed in another screen.
 
 * **Composition**
-  <br> How to break down large features into smaller components that can be extracted to their own, 
+  <br> How to break down large features into smaller components that can be extracted to their own,
   isolated modules and be easily glued back together to form the feature.
 
 * **Side effects**
-  <br> How to let certain parts of the application talk to the outside world in the most testable 
+  <br> How to let certain parts of the application talk to the outside world in the most testable
   and understandable way possible.
 
 * **Testing**
-  <br> How to not only test a feature built in the architecture, but also write integration tests 
-  for features that have been composed of many parts, and write end-to-end tests to understand how 
-  side effects influence your application. This allows you to make strong guarantees that your 
+  <br> How to not only test a feature built in the architecture, but also write integration tests
+  for features that have been composed of many parts, and write end-to-end tests to understand how
+  side effects influence your application. This allows you to make strong guarantees that your
   business logic is running in the way you expect.
 
 * **Ergonomics**
-  <br> How to accomplish all of the above in a simple API with as few concepts and moving parts as 
+  <br> How to accomplish all of the above in a simple API with as few concepts and moving parts as
   possible.
 
 
@@ -43,26 +43,26 @@ day-to-day when building applications, such as:
 > For a step-by-step interactive tutorial, be sure to check out [Meet the Composable
 > Architecture][meet-tca].
 
-To build a feature using the Composable Architecture you define some types and values that model 
+To build a feature using the Composable Architecture you define some types and values that model
 your domain:
 
-* **State**: A type that describes the data your feature needs to perform its logic and render its 
-UI.
-* **Action**: A type that represents all of the actions that can happen in your feature, such as 
-user actions, notifications, event sources and more.
-* **Reducer**: A function that describes how to evolve the current state of the app to the next 
-state given an action. The reducer is also responsible for returning any effects that should be 
-run, such as API requests, which can be done by returning an `Effect` value.
-* **Store**: The runtime that actually drives your feature. You send all user actions to the store 
-so that the store can run the reducer and effects, and you can observe state changes in the store 
-so that you can update UI.
+* **State**: A type that describes the data your feature needs to perform its logic and render its
+  UI.
+* **Action**: A type that represents all of the actions that can happen in your feature, such as
+  user actions, notifications, event sources and more.
+* **Reducer**: A function that describes how to evolve the current state of the app to the next
+  state given an action. The reducer is also responsible for returning any effects that should be
+  run, such as API requests, which can be done by returning an `Effect` value.
+* **Store**: The runtime that actually drives your feature. You send all user actions to the store
+  so that the store can run the reducer and effects, and you can observe state changes in the store
+  so that you can update UI.
 
-The benefits of doing this are that you will instantly unlock testability of your feature, and you 
+The benefits of doing this are that you will instantly unlock testability of your feature, and you
 will be able to break large, complex features into smaller domains that can be glued together.
 
-As a basic example, consider a UI that shows a number along with "+" and "−" buttons that increment 
-and decrement the number. To make things interesting, suppose there is also a button that when 
-tapped makes an API request to fetch a random fact about that number and then displays the fact in 
+As a basic example, consider a UI that shows a number along with "+" and "−" buttons that increment
+and decrement the number. To make things interesting, suppose there is also a button that when
+tapped makes an API request to fetch a random fact about that number and then displays the fact in
 an alert.
 
 ### Store & State
@@ -73,9 +73,23 @@ The store interface looks like this:
 
 ```kotlin
 interface Store<State, Action : Any> {
-    val state: Flow<State>
-    fun send(actions: List<Action>)
-    // more code
+  val state: StateFlow<State>
+  fun dispatch(vararg actions: A)
+}
+```
+
+You can create your own AppState and child features states such as below. Any data class can be in AppState but as a modularisation example in this app, we take featureStates via Dagger Multibinding.
+
+```kotlin
+data class AppState(
+    val featureStates: Map<String, State>,
+    val applifecycle: Lifecycle.State = Lifecycle.State.INITIALIZED,
+    val userState: UserState = UserState.NoUser,
+    val networkState: NetworkState = NetworkState.Offline
+) : State {
+    companion object {
+        const val stateKey = "appState"
+    }
 }
 ```
 
@@ -83,72 +97,57 @@ And you can create a new store using:
 
 ```kotlin
 createStore(
-    initialState = AppState(),
-    reducer = reducer,
-    subscription = subscription,
-    dispatcherProvider = dispatcherProvider,
-    storeScopeProvider = application as StoreScopeProvider
+  initialState = AppState(),
+  reducer = PullbackReducer(
+    innerReducer = reducers[AppState.stateKey] as Reducer<AppState, Action>,
+    mapToChildAction = { action -> action },
+    mapToChildState = { state -> state },
+    mapToParentAction = { action -> action },
+    mapToParentState = { state, _ -> state },
+  )
 )
 ```
 
 actions are sent like this:
 
 ```kotlin
-store.send(AppAction.BackPressed)
+store.dispatch(AppAction.BackPressed)
+// or
+store.dispatch(AppAction.BottomBarClicked(BottomTab.entries[index], navController))
+// or
+store.dispatch(AppAction.LoadConversations(
+  Resource.Success(
+    conversationDAO.getAll().map { it.toDomain() })
+))
 ```
 
 and views can subscribe like this:
 
 ```kotlin
-store.state
-    .onEach { Log.d(tag, "The whole state: \($0)") }
-    .launchIn(scope)
-
-// or
-
-store.state
-    .map { it.email }
-    .onEach { emailTextField.text = it }
-    .launchIn(scope)
+    val state: AppState by store.state.collectAsStateWithLifecycle()
+    // Propagate state down to child UI components
 ```
-
-The store can be "viewed into", which means that we'll treat a generic store as if it was a more specific one which deals with only part of the app state and a subset of the actions. More on the Store Views section.
 
 ### Actions
 
-Actions are sealed classes, which makes it easier to discover which actions are available and also add the certainty that we are handling all of them in reducers.
+Actions are sealed classes extending ai.flox.state.Action which have multiple types an Action can be. The Action can be of Action.UI with componentIdentifiers or Action.Data with the attached Resource on which the action is called on.
+Any reducer can change the state off the app, based on any type of actions.
 
 ```kotlin
-sealed class EditAction {
-    data class TitleChanged(val title: String) : EditAction()
-    data class DescriptionChanged(val description: String) : EditAction()
-    object CloseTapped : EditAction()
-    object SaveTapped : EditAction()
-    object Saved : EditAction()
+sealed interface AppAction : Action {
+  data class Navigate(val navController: NavController, val route: String) : Action.UI.NavigateEvent, AppAction {
+    override val componentIdentifier = AppIds.BottomBarIcon
+  }
+
+  data class BottomBarClicked(val id: BottomTab, val navController: NavController) : Action.UI.RenderEvent, AppAction {
+    override val componentIdentifier = AppIds.BottomBarIcon
+  }
+
+  data class LoadConversations(override val resource: Resource<Conversation>) : Action.Data.LoadData<Conversation>,
+    AppAction
 }
 ```
 
-These sealed actions are embedded into each other starting with the "root" `AppAction`
-
-```kotlin
-sealed class AppAction {
-    class List(override val action: ListAction) : AppAction(), ActionWrapper<ListAction>
-    class Edit(override val action: EditAction) : AppAction(), ActionWrapper<EditAction>
-    object BackPressed : AppAction()
-}
-```
-
-So to send an `EditAction` to a store that takes `AppActions` we would do
-
-```kotlin
-store.send(AppAction.Edit(EditAction.TitleChanged("new title")))
-```
-
-But if the store is a view that takes `EditAction`s we'd do it like this:
-
-```kotlin
-store.send(EditAction.TitleChanged("new title"))
-```
 
 ### Reducers & Effects
 
@@ -162,20 +161,12 @@ fun interface Reducer<State, Action> {
 
 The idea is they take the state and an action and modify the state depending on the action and its payload.
 
-In order to send actions asynchronously we use `Effect`s. Reducers return an array of `Effect`s. The store waits for those effects and sends whatever action they emit, if any.
+In order to send actions asynchronously back to the store we use `Effect`s. Reducers return an array of `Effect`s.
 
-An effect interface is also straightforward:
+We have 2 types of `Effect` builders, `withFlowEffect()` or `noEffect()`. If a reducer wants to dispatch a flow of `Action`s it can return a `Flow<Action>` as `ReduceResult` for async Action dispatch
 
-```kotlin
-interface Effect<out Action> {
-    suspend fun execute(): Action?
-}
-```
+else they can return `noEffect` which returns an empty flow.
 
-
-## Installation
-
-You can add ComposableArchitecture to an Xcode project by adding it as a package dependency.
 
 
 ## Contribute
@@ -185,43 +176,16 @@ PR](https://github.com/saumye/flox/edit/main/README.md) with a link
 to it!
 
 
-
-## FAQ
-
-* How does the Flox compare to Elm, Redux, and others?
-  <details>
-    <summary>Expand to see answer</summary>
-    Flox is built on a foundation of ideas popularized by the Elm 
-    Architecture (TEA) and Redux, but customised for Kotlin apps on top of Kotlin Flows in times of declarative UI such as 
-    Jetpack Compose on Google's platform.
-
-    In some ways TCA is a little more opinionated than the other libraries. For example, Redux is 
-    not prescriptive with how one executes side effects, but TCA requires all side effects to be 
-    modeled in the `Effect` type and returned from the reducer.
-
-    In other ways TCA is a little more lax than the other libraries. For example, Elm controls what 
-    kinds of effects can be created via the `Cmd` type, but TCA allows an escape hatch to any kind 
-    of effect since `Effect` wraps around an async operation.
-
-    And then there are certain things that TCA prioritizes highly that are not points of focus for 
-    Redux, Elm, or most other libraries. For example, composition is very important aspect of TCA, 
-    which is the process of breaking down large features into smaller units that can be glued 
-    together. This is accomplished with reducer builders and operators like `Scope`, and it aids in 
-    handling complex features as well as modularization for a better-isolated code base and improved 
-    compile times.
-  </details>
-
-
 ## Other libraries
 
-The Composable Architecture was built on a foundation of ideas started by other libraries, in 
+Flox was built on a foundation of ideas started by other libraries, in 
 particular [Elm](https://elm-lang.org) and [Redux](https://redux.js.org/).
 
 There are also many architecture libraries in the Android and Kotlin community. Each one of these has 
 their own set of priorities and trade-offs that differ from Flox.
 
 * [RIBs](https://github.com/uber/RIBs)
-* [Komposable](https://github.com/ReactiveCocoa/Loop)](https://github.com/toggl/komposable-architecture)
+* [Komposable](https://github.com/toggl/komposable-architecture)
 * [Redux-Kotlin](https://github.com/reduxkotlin/redux-kotlin)
 * [Android-RDX](https://github.com/flipkart-incubator/android-RDX)
 * [RxFlux](https://github.com/JohnnyShieh/RxFlux)
