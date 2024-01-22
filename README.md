@@ -7,11 +7,10 @@ Flux Architecture on top of Kotlin Flows
 Flux on Flow (Flox, for short) is a library for building Android applications via using the unidirectional flow of the Flux pattern. Redux the most popular state management system in the web applications world is built on this architecture used by >50% of web applications. In times of declarative UI becoming popular (via Jetpack Compose) in the Android ecosystem, this ease of state management system leads to faster development, less boiler plate, easy debuggability and readability of large scale Android apps.
 
 
-## What is the Flox and why should I use it?
+## Why
 
 This library provides a few core tools that can be used to build applications of varying purpose and
-complexity. It provides compelling stories that you can follow to solve many problems you encounter
-day-to-day when building applications, such as:
+complexity. As declarative UI picks up in the Android ecosystem with popularity of Redux in the web world, Flox comes in with a state management pattern to ensure state of large scale apps is maintainable and deterministic.
 
 * **State management**
   <br> How to manage the state of your application using simple value types, and share state across
@@ -19,22 +18,11 @@ day-to-day when building applications, such as:
 
 * **Composition**
   <br> How to break down large features into smaller components that can be extracted to their own,
-  isolated modules and be easily glued back together to form the feature.
+  isolated modules and be easily glued back together to form the feature via Dagger multibinding.
 
 * **Side effects**
   <br> How to let certain parts of the application talk to the outside world in the most testable
   and understandable way possible.
-
-* **Testing**
-  <br> How to not only test a feature built in the architecture, but also write integration tests
-  for features that have been composed of many parts, and write end-to-end tests to understand how
-  side effects influence your application. This allows you to make strong guarantees that your
-  business logic is running in the way you expect.
-
-* **Ergonomics**
-  <br> How to accomplish all of the above in a simple API with as few concepts and moving parts as
-  possible.
-
 
 
 ## Overview
@@ -60,10 +48,8 @@ your domain:
 The benefits of doing this are that you will instantly unlock testability of your feature, and you
 will be able to break large, complex features into smaller domains that can be glued together.
 
-As a basic example, consider a UI that shows a number along with "+" and "−" buttons that increment
-and decrement the number. To make things interesting, suppose there is also a button that when
-tapped makes an API request to fetch a random fact about that number and then displays the fact in
-an alert.
+As a basic example, consider a UI that is an architecture of a AI assistant application with chats, conversations inspired from ChatGPT. 
+Each screen has it's viewmodel broken down into feature modules that expose Reducer<State, Action> and Jetpack Compose Screens that map into global state and action with a single Application State maintained inside a Store.
 
 ### Store & State
 
