@@ -27,10 +27,6 @@ complexity. As declarative UI picks up in the Android ecosystem with popularity 
 
 ## Overview
 
-> **Note**
-> For a step-by-step interactive tutorial, be sure to check out [Meet the Composable
-> Architecture][meet-tca].
-
 To build a feature using the Composable Architecture you define some types and values that model
 your domain:
 
