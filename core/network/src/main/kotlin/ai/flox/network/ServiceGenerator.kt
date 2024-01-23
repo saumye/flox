@@ -3,7 +3,7 @@ package ai.flox.network
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import retrofit2.Retrofit
-import retrofit2.converter.gson.GsonConverterFactory
+import retrofit2.converter.moshi.MoshiConverterFactory
 
 /**
  * Generates Retrofit service proxy
@@ -22,7 +22,7 @@ object ServiceGenerator {
                     request.newBuilder()
                         .build()
                 )
-            }.addConverterFactory(GsonConverterFactory.create())
+            }.addConverterFactory(MoshiConverterFactory.create())
         return serviceBuilder.baseUrl(baseUrl).build().create(serviceClass)
     }
 

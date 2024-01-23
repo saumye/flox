@@ -3,9 +3,8 @@ package ai.flox.network.openai
 import ai.flox.network.ApiService
 import ai.flox.network.NetworkException
 import ai.flox.network.NetworkResource
-import ai.flox.network.openai.models.OpenAIRequest
 import ai.flox.network.openai.models.CompletionsResponse
-import com.google.gson.Gson
+import ai.flox.network.openai.models.OpenAIRequest
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -14,7 +13,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import retrofit2.Retrofit
-import retrofit2.converter.gson.GsonConverterFactory
+import retrofit2.converter.moshi.MoshiConverterFactory
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -43,14 +42,13 @@ object OpenAIModule {
     @Singleton
     @Provides
     internal fun provideOpenAIAPI(
-        gson: Gson,
         okHttpClient: OkHttpClient
     ): OpenAIAPI {
         val retrofit =
             Retrofit.Builder()
                 .baseUrl(OpenAIAPI.ENDPOINT)
                 .client(okHttpClient)
-                .addConverterFactory(GsonConverterFactory.create(gson))
+                .addConverterFactory(MoshiConverterFactory.create())
                 .build()
         return retrofit.create(OpenAIAPI::class.java)
     }

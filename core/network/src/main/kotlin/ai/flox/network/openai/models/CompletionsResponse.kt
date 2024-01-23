@@ -1,18 +1,20 @@
 package ai.flox.network.openai.models
 
-import com.google.gson.annotations.SerializedName
+import com.squareup.moshi.Json
+import com.squareup.moshi.JsonClass
 
+@JsonClass(generateAdapter = true)
 data class CompletionsResponse(
-    @SerializedName("choices")
+    @field:Json(name = "choices")
     val choices: List<Choice>,
 
-    @SerializedName("created")
+    @field:Json(name = "created")
     val created: Int,
 
-    @SerializedName("id")
+    @field:Json(name = "id")
     val id: String,
 
-    @SerializedName("model")
+    @field:Json(name = "model")
     val model: String
 )
 

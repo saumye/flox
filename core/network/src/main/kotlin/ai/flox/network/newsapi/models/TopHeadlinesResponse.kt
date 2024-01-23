@@ -1,42 +1,44 @@
 package ai.flox.network.newsapi.models
 
-import com.google.gson.annotations.SerializedName
+import com.squareup.moshi.Json
+import com.squareup.moshi.JsonClass
 
+@JsonClass(generateAdapter = true)
 data class TopHeadlinesResponse(
-    @SerializedName("articles")
+    @field:Json(name = "articles")
     val articles: List<Article>,
 
-    @SerializedName("status")
+    @field:Json(name = "status")
     val status: String,
 
-    @SerializedName("totalResults")
+    @field:Json(name = "totalResults")
     val results: Int
 )
 
 data class Article(
-    @SerializedName("title")
+    @field:Json(name = "title")
     val title: String,
 
-    @SerializedName("description")
+    @field:Json(name = "description")
     val description: String,
 
-    @SerializedName("url")
+    @field:Json(name = "url")
     val url: String,
 
-    @SerializedName("urlToImage")
+    @field:Json(name = "urlToImage")
     val urlToImage: String,
 
-    @SerializedName("source")
+    @field:Json(name = "source")
     val source: Source,
 
-    @SerializedName("publishedAt")
+    @field:Json(name = "publishedAt")
     val publishedAt: String
 )
 
 data class Source(
-    @SerializedName("id")
+    @field:Json(name = "id")
     val id: String,
 
-    @SerializedName("name")
+    @field:Json(name = "name")
     val name: String
 )

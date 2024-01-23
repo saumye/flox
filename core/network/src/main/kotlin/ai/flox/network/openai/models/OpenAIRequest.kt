@@ -1,12 +1,15 @@
 package ai.flox.network.openai.models
 
-import com.google.gson.annotations.SerializedName
+import com.squareup.moshi.Json
 
+import com.squareup.moshi.JsonClass
+
+@JsonClass(generateAdapter = true)
 data class OpenAIRequest(
-    @SerializedName("model")
+    @field:Json(name = "model")
     val model: String = "gpt-3.5-turbo",
 
-    @SerializedName("messages")
+    @field:Json(name = "messages")
     val messages: List<Message>
 ) {
     companion object {

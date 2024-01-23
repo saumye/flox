@@ -1,8 +1,11 @@
 package ai.flox.network.openai.models
 
-import com.google.gson.annotations.SerializedName
+import com.squareup.moshi.Json
 
+import com.squareup.moshi.JsonClass
+
+@JsonClass(generateAdapter = true)
 data class Choice(
-    @SerializedName("message")
+    @field:Json(name = "message")
     val message: Message
 )

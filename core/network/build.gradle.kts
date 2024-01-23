@@ -19,6 +19,7 @@ android {
 
 dependencies {
     implementation(libs.retrofit)
-    implementation(libs.gson)
-    implementation(libs.retrofit.converter.gson)
+    implementation(libs.moshi)
+    implementation(libs.retrofit.converter.moshi)
+    kapt(libs.moshi.codegen)
 }
