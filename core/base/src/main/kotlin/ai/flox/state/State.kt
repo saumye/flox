@@ -31,6 +31,8 @@ interface Action {
         interface UpdateData<T> : Data<T>
         interface DeleteData<T> : Data<T>
     }
+
+    data class Exception(val exception : kotlin.Exception) : Action
 }
 
 sealed interface Resource<T> {
