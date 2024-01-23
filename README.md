@@ -149,6 +149,16 @@ We have 2 types of `Effect` builders, `withFlowEffect()` or `noEffect()`. If a r
 
 else they can return `noEffect` which returns an empty flow.
 
+## 🛠 Tech Stack & Open Source Libraries
+- [Jetpack Compose](https://developer.android.com/jetpack/compose)
+- [Coroutines](https://github.com/Kotlin/kotlinx.coroutines)
+- [Flow](https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.flow/) for asynchronous action dispatch and listen.
+- [Compose](https://developer.android.com/jetpack/compose): Android’s modern toolkit for building native UI.
+- [Hilt Navigation Compose](https://developer.android.com/jetpack/compose/libraries#hilt) for injecting dependencies.
+- [Room](https://developer.android.com/training/data-storage/room): Constructs Database by providing an abstraction layer over SQLite to allow fluent database access.
+- [Hilt](https://dagger.dev/hilt/): Dependency Injection.
+- [Retrofit2 & OkHttp3](https://github.com/square/retrofit): Construct the REST APIs and paging network data.\
+- [Moshi](https://github.com/square/moshi/): A modern JSON library for Kotlin and Java.
 
 
 ## Contribute
