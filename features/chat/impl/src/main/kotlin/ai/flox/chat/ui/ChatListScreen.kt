@@ -5,6 +5,7 @@ import ai.flox.chat.R
 import ai.flox.chat.model.ChatAction
 import ai.flox.chat.model.ChatMessage
 import ai.flox.chat.model.ChatState
+import ai.flox.conversation.model.Conversation
 import ai.flox.state.Action
 import ai.flox.state.State
 import androidx.compose.foundation.Image
@@ -22,12 +23,9 @@ import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -37,7 +35,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.unit.dp
 import androidx.constraintlayout.compose.ConstraintLayout
@@ -52,13 +49,10 @@ fun ChatListScreen(
     store: Store<State, Action>
 ) {
     val state: ChatState by stateFlow.collectAsStateWithLifecycle()
-    LaunchedEffect(state) {
-        store.dispatch(ChatAction.RecentChatsRendered)
-    }
     ConstraintLayout(modifier = Modifier.fillMaxSize()) {
         val (messages, chatBox) = createRefs()
         val listState = rememberLazyListState()
-        state.recentChatList?.values?.toList()?.let { list ->
+        state.recentChatList.values.toList().let { list ->
             LazyColumn(
                 userScrollEnabled = true,
                 state = listState,
@@ -82,6 +76,7 @@ fun ChatListScreen(
         ComposeBox(
             composeState = state.composeState,
             dispatchEvent = store::dispatch,
+            conversation = state.conversation,
             modifier = Modifier
                 .fillMaxWidth()
                 .constrainAs(chatBox) {
@@ -97,6 +92,7 @@ fun ChatListScreen(
 @Composable
 fun ComposeBox(
     composeState: ChatState.ComposeState,
+    conversation: Conversation?,
     dispatchEvent: (ChatAction) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -137,11 +133,11 @@ fun ComposeBox(
             Column(modifier = Modifier.weight(0.15f)) {
                 Image(
                     modifier = modifier.size(48.dp).clickable {
-                        dispatchEvent(
-                            ChatAction.SendButtonClicked(
-                                text
+                        conversation?.let {
+                            dispatchEvent(
+                                ChatAction.SendMessage(text, it)
                             )
-                        )
+                        }
                     },
                     imageVector = ImageVector.vectorResource(R.drawable.top_arrow_circle),
                     contentDescription = "create chat",
@@ -164,16 +160,16 @@ fun ChatMessage(
     ) {
         Box(
             modifier = Modifier
-                .align(if (message.isUser) Alignment.End else Alignment.Start)
+                .align(if (message.isSelf()) Alignment.End else Alignment.Start)
                 .clip(
                     RoundedCornerShape(
                         topStart = 48f,
                         topEnd = 48f,
-                        bottomStart = if (message.isUser) 48f else 0f,
-                        bottomEnd = if (message.isUser) 0f else 48f
+                        bottomStart = if (message.isSelf()) 48f else 0f,
+                        bottomEnd = if (message.isSelf()) 0f else 48f
                     )
                 )
-                .background(if (message.isUser) Color.Black else Color.DarkGray)
+                .background(if (message.isSelf()) Color.Black else Color.DarkGray)
                 .padding(16.dp)
         ) {
             Text(

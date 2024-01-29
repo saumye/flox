@@ -19,8 +19,7 @@ class ConversationRepository @Inject constructor(
         return flow {
             emit(
                 ConversationAction.LoadConversations(
-                    Resource.Success(
-                        conversationDAO.getAll().map { it.toDomain() })
+                    Resource.Success(conversationDAO.getAll().map { it.toDomain() })
                 )
             )
         }.flowOn(Dispatchers.IO).catch {
@@ -30,17 +29,22 @@ class ConversationRepository @Inject constructor(
 
     fun addConversation(conversation: Conversation): Flow<ConversationAction> {
         return flow {
-            conversationDAO.insertAll(conversation.toLocal())
+            conversationDAO.insertOrUpdate(conversation.toLocal())
             emit(
-                ConversationAction.CreateOrUpdateConversations(
+                ConversationAction.CreateOrUpdateConversation(
                     Resource.Success(
-                        listOf(conversation)
+                        (conversation)
                     )
                 )
             )
         }.flowOn(Dispatchers.IO).catch {
             emit(
-                ConversationAction.CreateOrUpdateConversations(Resource.Failure(Exception(it), listOf(conversation.copy())))
+                ConversationAction.CreateOrUpdateConversation(
+                    Resource.Failure(
+                        Exception(it),
+                        conversation.copy()
+                    )
+                )
             )
         }
     }

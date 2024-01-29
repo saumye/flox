@@ -1,14 +1,15 @@
 package ai.flox.chat.model
 
+import ai.flox.conversation.model.Conversation
 import ai.flox.state.Action
 import ai.flox.state.Resource
 
 sealed interface ChatAction : Action {
-    data object RecentChatsRendered : Action.UI.RenderEvent, ChatAction {
+    data class RenderChatList(val conversation: Conversation) : Action.UI.RenderEvent, ChatAction {
         override val componentIdentifier = ChatIds.RecentChats
     }
 
-    data class SendButtonClicked(val message: String) : Action.UI.ClickedEvent, ChatAction {
+    data class SendMessage(val message: String, val conversation: Conversation) : Action.UI.ClickedEvent, ChatAction {
         override val componentIdentifier = ChatIds.BtnSend
     }
 
@@ -17,12 +18,12 @@ sealed interface ChatAction : Action {
         Action.Data.LoadData<ChatMessage>,
         ChatAction
 
-    data class LoadMessages(override val resource: Resource<ChatMessage>) :
-        Action.Data.LoadData<ChatMessage>,
+    data class LoadMessages(override val resource: Resource<List<ChatMessage>>) :
+        Action.Data.LoadData<List<ChatMessage>>,
         ChatAction
 
-    data class UpdateMessages(override val resource: Resource<ChatMessage>) :
-        Action.Data.UpdateData<ChatMessage>,
+    data class UpdateMessages(override val resource: Resource<List<ChatMessage>>) :
+        Action.Data.UpdateData<List<ChatMessage>>,
         ChatAction
 
     data class DeleteMessages(override val resource: Resource<ChatMessage>) :

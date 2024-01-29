@@ -22,16 +22,10 @@ class NewsRepository @Inject constructor(
             val headlines = newsService.headlines()
             if (headlines is NetworkResource.Success) {
                 headlines.data?.let { topHeadlinesResponse ->
-                    for (a in topHeadlinesResponse.articles) {
-                        newsDAO.insertAll(a.toDomain().toLocal())
+                    for (headline in topHeadlinesResponse.articles) {
+                        newsDAO.insertOrUpdate(headline.toDomain().toLocal())
                     }
-                    emit(
-                        HomeAction.CreateOrUpdateArticles(
-                            Resource.Success(
-                                topHeadlinesResponse.articles.map { it.toDomain() }
-                            )
-                        )
-                    )
+                    emit(HomeAction.CreateOrUpdateArticles(Resource.Success(topHeadlinesResponse.articles.map { it.toDomain() })))
                 }
             }
         }
@@ -39,12 +33,7 @@ class NewsRepository @Inject constructor(
 
     fun getNews(): Flow<HomeAction> {
         return flow {
-            emit(
-                HomeAction.LoadArticles(
-                    Resource.Success(
-                        newsDAO.getAll().map { it.toDomain() })
-                )
-            )
+            emit(HomeAction.LoadArticles(Resource.Success(newsDAO.getAll().map { it.toDomain() })))
         }.flowOn(Dispatchers.IO).catch {
             emit(HomeAction.LoadArticles(Resource.Failure(Exception(it))))
         }

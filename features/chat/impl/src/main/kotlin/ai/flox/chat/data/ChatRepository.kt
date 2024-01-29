@@ -3,6 +3,7 @@ package ai.flox.chat.data
 import ai.flox.chat.model.ChatAction
 import ai.flox.chat.model.ChatMessage
 import ai.flox.chat.model.SyncStatus
+import ai.flox.conversation.model.Conversation
 import ai.flox.network.NetworkResource
 import ai.flox.network.openai.OpenAIService
 import ai.flox.network.openai.models.OpenAIRequest
@@ -21,12 +22,11 @@ class ChatRepository @Inject constructor(
     private val chatDAO: ChatDAO
 ) {
 
-    fun getChatMessages(): Flow<ChatAction> {
+    fun getChatMessages(conversation: Conversation): Flow<ChatAction> {
         return flow {
             emit(
                 ChatAction.LoadMessages(
-                    Resource.Success(
-                        chatDAO.getAll().map { it.toDomain() })
+                    Resource.Success(chatDAO.getAll().map { it.toDomain(conversation) })
                 )
             )
         }.flowOn(Dispatchers.IO).catch {
@@ -36,29 +36,28 @@ class ChatRepository @Inject constructor(
 
     fun sendMessage(message: ChatMessage): Flow<ChatAction> {
         return flow {
-            chatDAO.insertAll(message.toLocal())
+            chatDAO.insertOrUpdate(message.toLocal(message.conversation))
             emit(
-                ChatAction.CreateOrUpdateMessages(
-                    Resource.Success(
-                        listOf(message)
-                    )
-                )
+                ChatAction.CreateOrUpdateMessages(Resource.Success(message))
             )
             val response = openAIService.completions(OpenAIRequest.fromDomain(message.message))
             if (response is NetworkResource.Success) {
                 response.data?.let {
-                    chatDAO.insertAll(it.toDomain(Date(System.currentTimeMillis())).toLocal())
+                    chatDAO.insertOrUpdate(it.toDomain(Date(System.currentTimeMillis()), message.conversation).toLocal(message.conversation))
                     emit(
                         ChatAction.CreateOrUpdateMessages(
                             Resource.Success(
-                                listOf(message.copy(messageState = SyncStatus.COMPLETED))
+                                message.copy(
+                                    messageState = SyncStatus.COMPLETED
+                                )
                             )
                         )
                     )
                     emit(
                         ChatAction.CreateOrUpdateMessages(
                             Resource.Success(
-                                listOf(it.toDomain(Date(System.currentTimeMillis())).copy(messageState = SyncStatus.COMPLETED))
+                                it.toDomain(Date(System.currentTimeMillis()), message.conversation)
+                                    .copy(messageState = SyncStatus.COMPLETED)
                             )
                         )
                     )
@@ -68,7 +67,7 @@ class ChatRepository @Inject constructor(
                     ChatAction.CreateOrUpdateMessages(
                         Resource.Failure(
                             error = response.error,
-                            data = listOf(message.copy(messageState = SyncStatus.FAILED_PERMANENTLY))
+                            data = message.copy(messageState = SyncStatus.FAILED_PERMANENTLY)
                         )
                     )
                 )
@@ -78,7 +77,7 @@ class ChatRepository @Inject constructor(
                 ChatAction.CreateOrUpdateMessages(
                     Resource.Failure(
                         Exception(it),
-                        listOf(message.copy(messageState = SyncStatus.FAILED_PERMANENTLY))
+                        message.copy(messageState = SyncStatus.FAILED_PERMANENTLY)
                     )
                 )
             )

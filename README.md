@@ -116,17 +116,31 @@ Actions are sealed classes extending ai.flox.state.Action which have multiple ty
 Any reducer can change the state off the app, based on any type of actions.
 
 ```kotlin
-sealed interface AppAction : Action {
-  data class Navigate(val navController: NavController, val route: String) : Action.UI.NavigateEvent, AppAction {
-    override val componentIdentifier = AppIds.BottomBarIcon
-  }
+interface Action {
+    sealed interface UI : Action {
+        val componentIdentifier: ComponentIdentifier
 
-  data class BottomBarClicked(val id: BottomTab, val navController: NavController) : Action.UI.RenderEvent, AppAction {
-    override val componentIdentifier = AppIds.BottomBarIcon
-  }
+        interface RenderEvent : UI
+        interface ClickedEvent : UI
+        interface DragEvent : UI
+        interface LongPressEvent : UI
+    }
 
-  data class LoadConversations(override val resource: Resource<Conversation>) : Action.Data.LoadData<Conversation>,
-    AppAction
+    data class NavigateEvent(
+        val route: String
+    ) : Action
+
+    sealed interface Data<T> : Action {
+
+        val resource: Resource<T>
+
+        interface CreateData<T> : Data<T>
+        interface LoadData<T> : Data<T>
+        interface UpdateData<T> : Data<T>
+        interface DeleteData<T> : Data<T>
+    }
+
+    data class Exception(val exception: kotlin.Exception) : Action
 }
 ```
 

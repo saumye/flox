@@ -11,6 +11,7 @@ android {
 
 dependencies {
     implementation(project(":features:chat:api"))
+    implementation(project(":features:conversation:api"))
     implementation(project(":core:storage"))
     implementation(project(":core:network"))
     implementation(project(":core:base"))

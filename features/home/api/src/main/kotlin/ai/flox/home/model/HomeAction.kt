@@ -9,11 +9,11 @@ sealed interface HomeAction : Action {
     }
 
     //Chat
-    data class CreateOrUpdateArticles(override val resource: Resource<NewsItem>) :
-        Action.Data.LoadData<NewsItem>, HomeAction
+    data class CreateOrUpdateArticles(override val resource: Resource<List<NewsItem>>) :
+        Action.Data.LoadData<List<NewsItem>>, HomeAction
 
-    data class LoadArticles(override val resource: Resource<NewsItem>) :
-        Action.Data.LoadData<NewsItem>, HomeAction
+    data class LoadArticles(override val resource: Resource<List<NewsItem>>) :
+        Action.Data.LoadData<List<NewsItem>>, HomeAction
 
     data class UpdateArticles(override val resource: Resource<NewsItem>) :
         Action.Data.UpdateData<NewsItem>, HomeAction

@@ -19,8 +19,11 @@ interface Action {
         interface ClickedEvent : UI
         interface DragEvent : UI
         interface LongPressEvent : UI
-        interface NavigateEvent : UI
     }
+
+    data class Navigate(
+        val route: String
+    ) : Action
 
     sealed interface Data<T> : Action {
 
@@ -32,19 +35,24 @@ interface Action {
         interface DeleteData<T> : Data<T>
     }
 
-    data class Exception(val exception : kotlin.Exception) : Action
+    data class Exception(val exception: kotlin.Exception) : Action
 }
 
 sealed interface Resource<T> {
     /**
      * The data operation succeeded.
      */
-    data class Success<T>(val data: List<T>?) : Resource<T>
+    data class Success<T>(val data: T) : Resource<T>
+
+    /**
+     * The data operation succeeded.
+     */
+    data class Pending<T>(val data: T) : Resource<T>
 
     /**
      * The data operation failed.
      */
-    data class Failure<T>(val error: Exception, val data : List<T>? = null) : Resource<T>
+    data class Failure<T>(val error: Exception, val data: T? = null) : Resource<T>
 }
 
 /**

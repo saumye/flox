@@ -22,6 +22,7 @@ import dagger.hilt.components.SingletonComponent
 import dagger.multibindings.IntoSet
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import javax.inject.Singleton
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -39,18 +40,21 @@ object NavigationComponent {
     }
     @Provides
     @IntoSet
+    @Singleton
     fun provideChatRoutes(store: Store<State, Action>): Navigable {
         return ChatNavigator(store, store.state.map(CoroutineScope(Dispatchers.Main)) { if(it is AppState) it.featureStates[ChatState.stateKey] as ChatState else ChatState() })
     }
 
     @Provides
     @IntoSet
+    @Singleton
     fun provideHomeRoutes(store: Store<State, Action>): Navigable {
         return HomeNavigator(store, store.state.map(CoroutineScope(Dispatchers.Main)) { if(it is AppState) it.featureStates[HomeState.stateKey] as HomeState else HomeState() })
     }
 
     @Provides
     @IntoSet
+    @Singleton
     fun provideConversationRoutes(store: Store<State, Action>): Navigable {
         return ConversationNavigator(store, store.state.map(CoroutineScope(Dispatchers.Main)) { if(it is AppState) it.featureStates[ConversationState.stateKey] as ConversationState else ConversationState() })
     }

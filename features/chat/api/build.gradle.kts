@@ -11,4 +11,5 @@ android {
 
 dependencies {
     implementation(project(":core:base"))
+    implementation(project(":features:conversation:api"))
 }

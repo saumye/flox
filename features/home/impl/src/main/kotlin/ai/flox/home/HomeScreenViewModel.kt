@@ -12,12 +12,8 @@ import ai.flox.home.model.NewsItem
 import ai.flox.state.Action
 import ai.flox.state.Resource
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.merge
-import kotlinx.coroutines.flow.stateIn
 import javax.inject.Inject
 
 @HiltViewModel
@@ -28,7 +24,7 @@ class HomeScreenViewModel @Inject constructor(
     @Pure
     @Synchronized
     override fun reduce(state: HomeState, action: Action): ReduceResult<HomeState, Action> {
-        if(action !is HomeAction){
+        if (action !is HomeAction) {
             return state.noEffect()
         }
         return when (action) {
@@ -38,27 +34,23 @@ class HomeScreenViewModel @Inject constructor(
             }
 
             is HomeAction.LoadArticles -> {
-                if (action.resource is Resource.Success<NewsItem>) {
-                    val res = action.resource as Resource.Success<NewsItem>
-                    res.data?.let {
-                        state.copy(recentNewsList = it.associateBy { msg -> msg.id }).noEffect()
-                    } ?: state.noEffect()
+                if (action.resource is Resource.Success) {
+                    val res = action.resource as Resource.Success<List<NewsItem>>
+                    state.copy(recentNewsList = res.data.associateBy { msg -> msg.id }).noEffect()
                 } else {
                     state.noEffect()
                 }
             }
 
             is HomeAction.CreateOrUpdateArticles -> {
-                if (action.resource is Resource.Success<NewsItem>) {
-                    val res = action.resource as Resource.Success<NewsItem>
-                    res.data?.let { messages ->
-                        state.recentNewsList?.let {
-                            val map = it.toMutableMap()
-                            for (message in messages) {
-                                map[message.id] = message
-                            }
-                            state.copy(recentNewsList = map.toMap()).noEffect()
-                        } ?: state.noEffect()
+                if (action.resource is Resource.Success) {
+                    val res = action.resource as Resource.Success<List<NewsItem>>
+                    state.recentNewsList?.let {
+                        val map = it.toMutableMap()
+                        for (message in res.data) {
+                            map[message.id] = message
+                        }
+                        state.copy(recentNewsList = map.toMap()).noEffect()
                     } ?: state.noEffect()
                 } else {
                     state.noEffect()

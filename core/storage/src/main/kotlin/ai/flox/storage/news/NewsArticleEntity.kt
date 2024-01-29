@@ -2,28 +2,27 @@ package ai.flox.storage.news
 
 import androidx.room.ColumnInfo
 import androidx.room.Entity
-import androidx.room.PrimaryKey
 
-@Entity(tableName = "article")
+@Entity(tableName = "article", primaryKeys = ["id", "url"])
 data class NewsArticleEntity(
     @ColumnInfo(name ="title")
     val title: String,
 
     @ColumnInfo(name ="description")
-    val description: String,
+    val description: String? = null,
 
     @ColumnInfo(name ="url")
     val url: String,
 
     @ColumnInfo(name ="urlToImage")
-    val urlToImage: String,
+    val urlToImage: String? = null,
 
     @ColumnInfo(name ="source")
-    val source: String,
+    val source: String? = null,
 
     @ColumnInfo(name = "publishedAt")
-    val publishedAt: Long,
+    val publishedAt: Long? = null,
 
-    @PrimaryKey @ColumnInfo(name = "id")
+    @ColumnInfo(name = "id")
     val id: String,
 )

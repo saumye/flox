@@ -11,13 +11,14 @@ import ai.flox.conversation.model.ConversationAction
 import ai.flox.conversation.model.ConversationState
 import ai.flox.state.Action
 import ai.flox.state.Resource
+import android.widget.Toast
 import androidx.lifecycle.ViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 
 @HiltViewModel
 class ConversationListViewModel @Inject constructor(
-    private val chatRepository: ConversationRepository
+    private val conversationRepository: ConversationRepository
 ) : ViewModel(), Reducer<ConversationState, Action> {
 
     @Pure
@@ -30,36 +31,33 @@ class ConversationListViewModel @Inject constructor(
             return state.noEffect()
         }
         return when (action) {
-            is ConversationAction.ConversationClicked -> {
-                state.noEffect()//withFlowEffect(flow {emit(ChatAc)})
-            }
-            is ConversationAction.RecentConversationRendered -> {
-                state.withFlowEffect(chatRepository.getConversations())
+
+            is ConversationAction.RenderConversationList -> {
+                state.withFlowEffect(conversationRepository.getConversations())
             }
             is ConversationAction.LoadConversations -> {
-                if (action.resource is Resource.Success<Conversation>) {
-                    val res = action.resource as Resource.Success<Conversation>
-                    res.data?.let {
-                        state.copy(recentConversationList = it.associateBy { msg -> msg.id }).noEffect()
-                    } ?: state.noEffect()
+                if (action.resource is Resource.Success) {
+                    val res = action.resource as Resource.Success<List<Conversation>>
+                    state.copy(recentConversationList = res.data.associateBy { msg -> msg.id }).noEffect()
                 } else {
                     state.noEffect()
                 }
             }
-            is ConversationAction.CreateOrUpdateConversations -> {
-                if (action.resource is Resource.Success<Conversation>) {
-                    val res = action.resource as Resource.Success<Conversation>
-                    res.data?.let { messages ->
+            is ConversationAction.CreateOrUpdateConversation -> {
+                when(action.resource) {
+                    is Resource.Pending<Conversation> -> {
+                        val res = action.resource as Resource.Pending<Conversation>
+                        state.withFlowEffect(conversationRepository.addConversation(res.data))
+                    }
+                    is Resource.Success<Conversation> -> {
+                        val res = action.resource as Resource.Success<Conversation>
                         state.recentConversationList.let {
-                            val map = it.toMutableMap()
-                            for (message in messages) {
-                                map[message.id] = message
-                            }
-                            state.copy(recentConversationList = map.toMap()).noEffect()
+                            state.copy(recentConversationList = it.toMutableMap().apply {
+                                put(res.data.id,res.data)
+                            }.toMap()).noEffect()
                         }
-                    } ?: state.noEffect()
-                } else {
-                    state.noEffect()
+                    }
+                    else -> state.noEffect()
                 }
             }
             else -> state.noEffect()

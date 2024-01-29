@@ -1,9 +1,11 @@
 package ai.flox.chat.model
 
+import ai.flox.conversation.model.Conversation
 import ai.flox.state.State
 
 data class ChatState(
-    val recentChatList: Map<String, ChatMessage>? = null,
+    val conversation: Conversation? = null,
+    val recentChatList: Map<String, ChatMessage> = mapOf(),
     val composeState: ComposeState = ComposeState.LoadComplete()
 ) : State {
 

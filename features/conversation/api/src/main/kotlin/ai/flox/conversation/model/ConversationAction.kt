@@ -4,22 +4,22 @@ import ai.flox.state.Action
 import ai.flox.state.Resource
 
 sealed interface ConversationAction : Action {
-    data object RecentConversationRendered : Action.UI.RenderEvent, ConversationAction {
+    data object RenderConversationList : Action.UI.RenderEvent,
+        ConversationAction {
         override val componentIdentifier = ChatIds.RecentConversations
     }
-    data class ConversationClicked(val conversation: String) : Action.UI.ClickedEvent,
-        ConversationAction {
-        override val componentIdentifier = ChatIds.ConversationTitle
-    }
 
-    //Chat
-    data class CreateOrUpdateConversations(override val resource: Resource<Conversation>) : Action.Data.LoadData<Conversation>,
+    //Conversation
+    data class CreateOrUpdateConversation(override val resource: Resource<Conversation>) :
+        Action.Data.LoadData<Conversation>,
         ConversationAction
-    data class LoadConversations(override val resource: Resource<Conversation>) : Action.Data.LoadData<Conversation>,
+
+    data class LoadConversations(override val resource: Resource<List<Conversation>>) :
+        Action.Data.LoadData<List<Conversation>>,
         ConversationAction
-    data class UpdateConversations(override val resource: Resource<Conversation>) : Action.Data.UpdateData<Conversation>,
-        ConversationAction
-    data class DeleteConversations(override val resource: Resource<Conversation>) : Action.Data.LoadData<Conversation>,
+
+    data class DeleteConversation(override val resource: Resource<Conversation>) :
+        Action.Data.LoadData<Conversation>,
         ConversationAction
 }
 

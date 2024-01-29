@@ -2,6 +2,7 @@ package ai.flox.di
 
 import ai.flox.AppState
 import ai.flox.GlobalReducer
+import ai.flox.NavigationReducer
 import ai.flox.arch.CompositeReducer
 import ai.flox.arch.PullbackReducer
 import ai.flox.arch.Reducer
@@ -12,6 +13,7 @@ import ai.flox.home.model.HomeState
 import ai.flox.conversation.model.ConversationState
 import ai.flox.state.Action
 import ai.flox.state.State
+import androidx.navigation.NavController
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -28,8 +30,14 @@ object MainModule {
     @Provides
     @IntoMap
     @StringKey(AppState.stateKey)
-    fun provideReducer(): Reducer<*, *> {
-        return GlobalReducer()
+    fun provideGlobalReducer(navigationReducer: NavigationReducer): Reducer<*, *> {
+        return GlobalReducer(navigationReducer)
+    }
+
+    @Provides
+    @Singleton
+    fun provideNavigationReducer(): NavigationReducer{
+        return NavigationReducer()
     }
 
     @Singleton
@@ -38,52 +46,6 @@ object MainModule {
         reducers: Map<String, @JvmSuppressWildcards Reducer<*, *>>,
         featureStates: Map<String, @JvmSuppressWildcards State>,
     ): Store<State, Action> {
-
-//        val appReducer : Reducer<AppState, Action> = reducers[AppState.stateKey] as Reducer<AppState, Action>
-//        val chatReducer: Reducer<ChatState, ChatAction> = reducers[ChatState.stateKey] as Reducer<ChatState, ChatAction>
-//        val conversationReducer: Reducer<ConversationState, ConversationAction> =
-//            reducers[ConversationState.stateKey] as Reducer<ConversationState, ConversationAction>
-//        val reducersMap = PullbackReducer(
-//                ForEachReducer(
-//                    childReducer = chatReducer,
-//                    parentReducer = appReducer,
-//                    mapToChildAction = { action -> if (action is ChatAction) ChatState.stateKey to action else null },
-//                    mapToParentAction = { chatAction, _ -> chatAction },
-//                    mapToChildState = { appState, _ ->
-//                        appState.featureStates[ChatState.stateKey]?.let {
-//                            if (it is ChatState) it else ChatState()
-//                        } ?: ChatState()
-//                    },
-//                    mapToParentState = { appState, chatState, _ ->
-//                        appState.copy(
-//                            featureStates = appState.featureStates.toMutableMap()
-//                                .apply { this[ChatState.stateKey] = chatState })
-//                    }
-//                ),
-//                ForEachReducer(
-//                    childReducer = conversationReducer,
-//                    parentReducer = appReducer,
-//                    mapToChildAction = { action -> if (action is ConversationAction) ConversationState.stateKey to action else null },
-//                    mapToParentAction = { conversationAction, _ -> conversationAction },
-//                    mapToChildState = { appState, _ ->
-//                        appState.featureStates[ConversationState.stateKey]?.let {
-//                            if (it is ConversationState) it else ConversationState()
-//                        } ?: ConversationState()
-//                    },
-//                    mapToParentState = { appState, conversationState, _ ->
-//                        appState.copy(
-//                            featureStates = appState.featureStates.toMutableMap()
-//                                .apply { this[ConversationState.stateKey] = conversationState })
-//                    }
-//                )
-//        )
-//
-//        val store = createStore(
-//            initialState = AppState(featureStates),
-//            reducer = reducersMap
-//        )
-
-
         val store: Store<AppState, Action> = createStore(
             initialState = AppState(featureStates),
             reducer = CompositeReducer(

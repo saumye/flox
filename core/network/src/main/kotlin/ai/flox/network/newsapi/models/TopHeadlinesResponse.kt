@@ -15,30 +15,32 @@ data class TopHeadlinesResponse(
     val results: Int
 )
 
+@JsonClass(generateAdapter = true)
 data class Article(
     @field:Json(name = "title")
     val title: String,
 
     @field:Json(name = "description")
-    val description: String,
+    val description: String? = null,
 
     @field:Json(name = "url")
     val url: String,
 
     @field:Json(name = "urlToImage")
-    val urlToImage: String,
+    val urlToImage: String? = null,
 
     @field:Json(name = "source")
-    val source: Source,
+    val source: Source? = null,
 
     @field:Json(name = "publishedAt")
-    val publishedAt: String
+    val publishedAt: String? = null
 )
 
+@JsonClass(generateAdapter = true)
 data class Source(
     @field:Json(name = "id")
-    val id: String,
+    val id: String? = null,
 
     @field:Json(name = "name")
-    val name: String
+    val name: String? = null
 )

@@ -6,5 +6,5 @@ import java.util.UUID
 data class Conversation(
     val id: String = UUID.randomUUID().toString(),
     val title: String,
-    val lastMessageTime: Date
+    val lastMessageTime: Date = Date(System.currentTimeMillis())
 )

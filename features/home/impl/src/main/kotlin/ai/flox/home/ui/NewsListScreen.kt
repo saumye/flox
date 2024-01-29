@@ -12,9 +12,11 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -34,7 +36,7 @@ fun NewsListScreen(
     store: Store<State, Action>
 ) {
     val state: HomeState by stateFlow.collectAsStateWithLifecycle()
-    LaunchedEffect(state) {
+    LaunchedEffect(Unit) {
         store.dispatch(HomeAction.RecentNewsRendered)
     }
     ConstraintLayout(modifier = Modifier.fillMaxSize()) {
@@ -58,7 +60,20 @@ fun NewsListScreen(
                     NewsArticle(item)
                 }
             }
-        }
+        } ?:  CircularProgressIndicator(
+            modifier = Modifier
+                .width(64.dp)
+                .constrainAs(messages) {
+                top.linkTo(parent.top)
+                bottom.linkTo(parent.bottom)
+                start.linkTo(parent.start)
+                end.linkTo(parent.end)
+                height = Dimension.fillToConstraints
+            },
+            color = Color.LightGray,
+            trackColor = Color.Magenta
+        )
+
     }
 }
 
@@ -79,7 +94,7 @@ fun NewsArticle(
                 .padding(16.dp)
         ) {
             Text(
-                text = message.title,
+                text = message.title?: message.description ?: message.url,
                 color = Color.White
             )
         }

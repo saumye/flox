@@ -6,17 +6,21 @@ import ai.flox.arch.Reducer
 import ai.flox.arch.noEffect
 import ai.flox.arch.withFlowEffect
 import ai.flox.model.AppAction
+import ai.flox.model.AppIds
 import ai.flox.state.Action
+import androidx.navigation.NavController
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import kotlinx.coroutines.flow.flow
+import javax.inject.Inject
 
-class GlobalReducer : Reducer<AppState, Action> {
+class GlobalReducer @Inject constructor(
+    private val navigationReducer: NavigationReducer
+) : Reducer<AppState, Action> {
+
     @Pure
     override fun reduce(state: AppState, action: Action): ReduceResult<AppState, Action> {
-        if(action !is AppAction) {
-            return state.noEffect()
-        }
         return when (action) {
+            is Action.Navigate -> return navigationReducer.reduce(state, action)
             is AppAction.BottomBarClicked -> {
                 val selectedTab = action.id
                 state.copy(
@@ -25,21 +29,11 @@ class GlobalReducer : Reducer<AppState, Action> {
                     )
                 ).withFlowEffect(
                     flow {
-                        emit(AppAction.Navigate(action.navController, selectedTab.route))
+                        emit(Action.Navigate(selectedTab.route))
                     }
                 )
             }
-
-            is AppAction.Navigate -> {
-                action.navController.navigate(action.route) {
-                    popUpTo(action.navController.graph.findStartDestination().id) {
-                        saveState = true
-                    }
-                    launchSingleTop = true
-                    restoreState = true
-                }
-                state.noEffect()
-            }
+            else -> state.noEffect()
         }
     }
 }

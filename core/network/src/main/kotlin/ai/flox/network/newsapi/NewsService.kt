@@ -5,6 +5,7 @@ import ai.flox.network.BuildConfig
 import ai.flox.network.NetworkException
 import ai.flox.network.NetworkResource
 import ai.flox.network.newsapi.models.TopHeadlinesResponse
+import com.squareup.moshi.Moshi
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -32,7 +33,7 @@ class NewsService @Inject constructor(
                     category ="technology"
                 )
                 NetworkResource.Success(res.body(), null)
-            }catch (ex: Exception) {
+            } catch (ex: Exception) {
                 // TODO: Handle all kinds of failures
                 NetworkResource.Failure(NetworkException.fromException(ex))
             }
@@ -53,7 +54,7 @@ object NewsAPIModule {
             Retrofit.Builder()
                 .baseUrl(NewsAPI.ENDPOINT)
                 .client(okHttpClient)
-                .addConverterFactory(MoshiConverterFactory.create())
+                .addConverterFactory(MoshiConverterFactory.create(Moshi.Builder().build()))
                 .build()
         return retrofit.create(NewsAPI::class.java)
     }

@@ -14,4 +14,5 @@ dependencies {
     implementation(project(":core:network"))
     implementation(project(":core:base"))
     implementation(project(":features:conversation:api"))
+    implementation(project(":features:chat:api"))
 }

@@ -7,12 +7,18 @@ import ai.flox.arch.noEffect
 import ai.flox.arch.withFlowEffect
 import ai.flox.chat.data.ChatRepository
 import ai.flox.chat.model.ChatAction
+import ai.flox.chat.model.ChatIds
 import ai.flox.chat.model.ChatMessage
 import ai.flox.chat.model.ChatState
+import ai.flox.conversation.model.Conversation
+import ai.flox.conversation.model.ConversationAction
 import ai.flox.state.Action
+import ai.flox.state.ComponentIdentifier
 import ai.flox.state.Resource
 import androidx.lifecycle.ViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.merge
 import java.util.Date
 import javax.inject.Inject
 
@@ -24,52 +30,75 @@ class ChatListViewModel @Inject constructor(
     @Pure
     @Synchronized
     override fun reduce(state: ChatState, action: Action): ReduceResult<ChatState, Action> {
-        if(action !is ChatAction){
-            return state.noEffect()
-        }
         return when (action) {
-            is ChatAction.SendButtonClicked -> {
+            is ChatAction.SendMessage -> {
                 state.copy(composeState = ChatState.ComposeState.Loading(state.composeState.userInput))
                     .withFlowEffect(
-                        chatRepository.sendMessage(
-                            ChatMessage(
-                                message = action.message,
-                                isUser = true,
-                                timestamp = Date(System.currentTimeMillis())
+                        merge(
+                            chatRepository.sendMessage(
+                                ChatMessage(
+                                    message = action.message,
+                                    userId = "self",
+                                    conversation = action.conversation,
+                                    timestamp = Date(System.currentTimeMillis())
+                                )
+                            ), flowOf(
+                                ConversationAction.CreateOrUpdateConversation(
+                                    Resource.Success(
+                                        action.conversation.copy(
+                                            title = action.message,
+                                            lastMessageTime = Date(System.currentTimeMillis())
+                                        )
+                                    )
+                                )
                             )
                         )
                     )
             }
 
-            is ChatAction.RecentChatsRendered -> {
-                state.withFlowEffect(chatRepository.getChatMessages())
+            is ConversationAction.CreateOrUpdateConversation -> {
+                if (action.resource is Resource.Success) {
+                    val res = action.resource as Resource.Success<Conversation>
+                    state.copy(conversation = res.data).noEffect()
+                } else {
+                    state.noEffect()
+                }
+            }
+
+            is ChatAction.RenderChatList -> {
+                state.withFlowEffect(
+                    merge(
+                        chatRepository.getChatMessages(action.conversation), flowOf(
+                            Action.Navigate(route = ChatRoutes.chat)
+                        )
+                    )
+                )
             }
 
             is ChatAction.LoadMessages -> {
-                if (action.resource is Resource.Success<ChatMessage>) {
-                    val res = action.resource as Resource.Success<ChatMessage>
-                    res.data?.let {
-                        state.copy(recentChatList = it.associateBy { msg -> msg.id }).noEffect()
-                    } ?: state.noEffect()
+                if (action.resource is Resource.Success) {
+                    val res = action.resource as Resource.Success<List<ChatMessage>>    //TODO
+                    state.copy(recentChatList = res.data.associateBy { msg -> msg.id }).noEffect()
                 } else {
                     state.noEffect()
                 }
             }
 
             is ChatAction.CreateOrUpdateMessages -> {
-                if (action.resource is Resource.Success<ChatMessage>) {
-                    val res = action.resource as Resource.Success<ChatMessage>
-                    res.data?.let { messages ->
-                        state.recentChatList?.let {
-                            val map = it.toMutableMap()
-                            for (message in messages) {
-                                map[message.id] = message
-                            }
-                            state.copy(recentChatList = map.toMap()).noEffect()
-                        } ?: state.noEffect()
-                    } ?: state.noEffect()
-                } else {
-                    state.noEffect()
+                when (action.resource) {
+                    is Resource.Pending<ChatMessage> -> {
+                        val res = action.resource as Resource.Pending<ChatMessage>
+                        state.withFlowEffect(chatRepository.sendMessage(res.data))
+                    }
+
+                    is Resource.Success<ChatMessage> -> {
+                        val res = action.resource as Resource.Success<ChatMessage>
+                        state.copy(recentChatList = state.recentChatList.toMutableMap().apply {
+                            put(res.data.id, res.data)
+                        }.toMap()).noEffect()
+                    }
+
+                    else -> state.noEffect()
                 }
             }
 
