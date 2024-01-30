@@ -27,6 +27,7 @@ class FeatureConventionPlugin : Plugin<Project> {
             add("androidTestImplementation",libs.androidx.test.ext.junit)
             add("androidTestImplementation",libs.espresso.core)
             add("implementation", libs.navigation.compose)
+            add("implementation",libs.coil)
 
         }
     }

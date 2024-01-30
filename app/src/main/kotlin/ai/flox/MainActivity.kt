@@ -57,7 +57,7 @@ class MainActivity : ComponentActivity() {
     lateinit var routes: Set<@JvmSuppressWildcards Navigable>
 
     @Composable
-    fun showNavBars(navController: NavHostController): Boolean {
+    fun showBottomBar(navController: NavHostController): Boolean {
         val navBackStackEntry by navController.currentBackStackEntryAsState()
         return navBackStackEntry?.destination?.route?.let {
             BottomTab.belongs(it)
@@ -74,37 +74,8 @@ class MainActivity : ComponentActivity() {
             navigationReducer.appNavController = navController
             FloxTheme {
                 Scaffold(
-                    topBar = {
-                        if (showNavBars(navController)) {
-                            Column(
-                                modifier = Modifier.padding(16.dp).fillMaxWidth(),
-                                verticalArrangement = Arrangement.spacedBy(16.dp),
-                            ) {
-                                Button(
-                                    modifier = Modifier.align(Alignment.End),
-                                    onClick = {
-                                        store.dispatch(
-                                            ConversationAction.CreateOrUpdateConversation(
-                                                Resource.Pending(
-                                                    Conversation(title = "New Conversation")
-                                                )
-                                            ),
-                                            Action.Navigate(
-                                                route = ChatRoutes.chat
-                                            )
-                                        )
-                                    }) {
-                                    Icon(
-                                        painter = painterResource(id = R.drawable.create_chat),
-                                        modifier = Modifier.size(24.dp),
-                                        contentDescription = "Create Chat"
-                                    )
-                                }
-                            }
-                        }
-                    },
                     bottomBar = {
-                        if (showNavBars(navController)) {
+                        if (showBottomBar(navController)) {
                             BottomBar(
                                 state.bottomBarState.bottomTabs,
                                 navController,
