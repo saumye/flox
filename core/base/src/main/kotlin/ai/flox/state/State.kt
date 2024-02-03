@@ -22,7 +22,8 @@ interface Action {
     }
 
     data class Navigate(
-        val route: String
+        val route: String,
+
     ) : Action
 
     sealed interface Data<T> : Action {

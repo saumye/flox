@@ -28,6 +28,7 @@ internal fun Project.configureAndroidCompose(commonExtension: CommonExtension<*,
             add("implementation",libs.androidx.ui.tooling)
             add("implementation",libs.androidx.constraintlayout)
             add("implementation",libs.constraintlayout.compose)
+            add("implementation",libs.coil)
 
         }
     }

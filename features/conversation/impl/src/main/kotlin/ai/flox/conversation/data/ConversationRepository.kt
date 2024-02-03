@@ -14,7 +14,6 @@ import javax.inject.Inject
 class ConversationRepository @Inject constructor(
     private val conversationDAO: ConversationDAO
 ) {
-
     fun getConversations(): Flow<ConversationAction> {
         return flow {
             emit(
@@ -24,6 +23,18 @@ class ConversationRepository @Inject constructor(
             )
         }.flowOn(Dispatchers.IO).catch {
             emit(ConversationAction.LoadConversations(Resource.Failure(Exception(it))))
+        }
+    }
+
+    fun getConversation(): Flow<ConversationAction> {
+        return flow {
+            emit(
+                ConversationAction.LoadConversation(
+                    Resource.Success(conversationDAO.get("").toDomain() )
+                )
+            )
+        }.flowOn(Dispatchers.IO).catch {
+            emit(ConversationAction.LoadConversation(Resource.Failure(Exception(it))))
         }
     }
 

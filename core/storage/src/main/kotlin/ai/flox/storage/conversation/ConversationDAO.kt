@@ -15,6 +15,9 @@ interface ConversationDAO : BaseDAO {
     @Query("SELECT * FROM conversation")
     suspend fun getAll(): List<ConversationEntity>
 
+    @Query("SELECT * FROM conversation where id = :convId")
+    suspend fun get(convId: String): ConversationEntity
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertOrUpdate(vararg conversation: ConversationEntity)
 }

@@ -18,6 +18,10 @@ sealed interface ConversationAction : Action {
         Action.Data.LoadData<List<Conversation>>,
         ConversationAction
 
+    data class LoadConversation(override val resource: Resource<Conversation>) :
+        Action.Data.LoadData<Conversation>,
+        ConversationAction
+
     data class DeleteConversation(override val resource: Resource<Conversation>) :
         Action.Data.LoadData<Conversation>,
         ConversationAction

@@ -6,6 +6,7 @@ import ai.flox.chat.model.ChatAction
 import ai.flox.chat.model.ChatMessage
 import ai.flox.chat.model.ChatState
 import ai.flox.conversation.model.Conversation
+import ai.flox.conversation.model.ConversationAction
 import ai.flox.state.Action
 import ai.flox.state.State
 import androidx.compose.foundation.Image
@@ -26,6 +27,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -46,7 +48,8 @@ import kotlinx.coroutines.flow.StateFlow
 @Composable
 fun ChatListScreen(
     stateFlow: StateFlow<ChatState>,
-    store: Store<State, Action>
+    store: Store<State, Action>,
+    conversationId: String
 ) {
     val state: ChatState by stateFlow.collectAsStateWithLifecycle()
     ConstraintLayout(modifier = Modifier.fillMaxSize()) {
@@ -132,13 +135,15 @@ fun ComposeBox(
             }
             Column(modifier = Modifier.weight(0.15f)) {
                 Image(
-                    modifier = modifier.size(48.dp).clickable {
-                        conversation?.let {
-                            dispatchEvent(
-                                ChatAction.SendMessage(text, it)
-                            )
-                        }
-                    },
+                    modifier = modifier
+                        .size(48.dp)
+                        .clickable {
+                            conversation?.let {
+                                dispatchEvent(
+                                    ChatAction.SendMessage(text, it)
+                                )
+                            }
+                        },
                     imageVector = ImageVector.vectorResource(R.drawable.top_arrow_circle),
                     contentDescription = "create chat",
                     alignment = Alignment.Center

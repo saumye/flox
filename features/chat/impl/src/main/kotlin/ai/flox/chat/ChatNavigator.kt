@@ -26,7 +26,9 @@ class ChatNavigator(
         modifier: Modifier
     ) {
         navGraphBuilder.composable(ChatRoutes.chat) {
-            ChatListScreen(state, store)
+            it.arguments?.getString("conversationId")?.let {
+                ChatListScreen(state, store, it)
+            }
         }
 
     }

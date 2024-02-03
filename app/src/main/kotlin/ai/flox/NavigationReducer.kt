@@ -18,13 +18,7 @@ class NavigationReducer: Reducer<AppState, Action> {
                     Log.d("NavigationReducer", "NavController is not initialised")
                     return state.noEffect()
                 }
-                appNavController.navigate(action.route) {
-                    popUpTo(appNavController.graph.findStartDestination().id) {
-                        saveState = true
-                    }
-                    launchSingleTop = true
-                    restoreState = true
-                }
+                appNavController.navigate(action.route)
                 state.noEffect()
             }
             else -> state.noEffect()
