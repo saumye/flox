@@ -163,6 +163,18 @@ We have 2 types of `Effect` builders, `withFlowEffect()` or `noEffect()`. If a r
 
 else they can return `noEffect` which returns an empty flow.
 
+## How to run
+
+1. Add the key on your local.properties file on the project (Android Studio) like the below.
+
+<img width="574" alt="Screenshot 2024-02-03 at 11 06 32 PM" src="https://github.com/saumye/flox/assets/4491538/9e076e2b-1302-4351-bebc-f86e859d9f12">
+
+2. Run the project
+
+<img width="243" alt="Screenshot 2024-02-03 at 11 09 25 PM" src="https://github.com/saumye/flox/assets/4491538/ed21e935-ff3c-4976-8f86-490ac0369b6d">
+
+
+
 ## 🛠 Tech Stack & Open Source Libraries
 - [Jetpack Compose](https://developer.android.com/jetpack/compose)
 - [Coroutines](https://github.com/Kotlin/kotlinx.coroutines)
