@@ -26,7 +26,7 @@ import org.gradle.kotlin.dsl.dependencies
 import org.gradle.kotlin.dsl.getByType
 
 class ComposeConventionPlugin : Plugin<Project> {
-    override fun apply(target: Project) = with(target) {
+    override fun apply(target: Project): Unit = with(target) {
         // check if the plugin is being applied to application
         if (plugins.hasPlugin("ai.flox.application")) {
             val extension = extensions.getByType<BaseAppModuleExtension>()
