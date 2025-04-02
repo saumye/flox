@@ -15,4 +15,5 @@ dependencies {
     implementation(project(":core:storage"))
     implementation(project(":core:network"))
     implementation(project(":core:base"))
+    implementation(project(":core:tts"))
 }

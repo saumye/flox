@@ -27,3 +27,4 @@ include(":features:conversation:impl")
 include(":features:home:api")
 include(":features:home:impl")
 
+include(":core:tts")
