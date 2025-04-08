@@ -13,6 +13,10 @@ sealed interface ChatAction : Action {
         override val componentIdentifier = ChatIds.BtnSend
     }
 
+    data class RecordMessage(val message: String, val conversation: Conversation) : Action.UI.ClickedEvent, ChatAction {
+        override val componentIdentifier = ChatIds.RecordMsg
+    }
+
     //Chat
     data class CreateOrUpdateMessages(override val resource: Resource<ChatMessage>) :
         Action.Data.LoadData<ChatMessage>,
@@ -34,4 +38,5 @@ sealed interface ChatAction : Action {
 object ChatIds {
     const val RecentChats = "RecentChats"
     const val BtnSend = "BtnSend"
+    const val RecordMsg = "RecordMsg"
 }

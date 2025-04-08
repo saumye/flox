@@ -12,7 +12,7 @@ android {
         buildConfig = true
     }
     defaultConfig {
-        buildConfigField("String", "OPENAIAPI_KEY", "\"" + "\"") // gradleLocalProperties(rootDir).getProperty("OPENAIAPI_KEY", "") + "\"")
+        buildConfigField("String", "OPENAIAPI_KEY", "\"" + "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" + "\"") // gradleLocalProperties(rootDir).getProperty("OPENAIAPI_KEY", "") + "\"")
         buildConfigField("String", "NEWSAPI_KEY", "\"" + "\"") // gradleLocalProperties(rootDir).getProperty("NEWSAPI_KEY", "") + "\"")
     }
 }

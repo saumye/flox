@@ -109,7 +109,7 @@ fun ComposeBox(
         ) {
             Column(
                 modifier = Modifier
-                    .weight(0.85f)
+                    .weight(0.7f)
                     .fillMaxWidth()
             ) {
                 TextField(
@@ -146,6 +146,23 @@ fun ComposeBox(
                         },
                     imageVector = ImageVector.vectorResource(R.drawable.top_arrow_circle),
                     contentDescription = "create chat",
+                    alignment = Alignment.Center
+                )
+
+            }
+            Column(modifier = Modifier.weight(0.15f)) {
+                Image(
+                    modifier = modifier
+                        .size(48.dp)
+                        .clickable {
+                            conversation?.let {
+                                dispatchEvent(
+                                    ChatAction.RecordMessage(text, it)
+                                )
+                            }
+                        },
+                    imageVector = ImageVector.vectorResource(R.drawable.ic_mic),
+                    contentDescription = "create audio",
                     alignment = Alignment.Center
                 )
 

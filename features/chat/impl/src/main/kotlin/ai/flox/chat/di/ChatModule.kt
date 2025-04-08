@@ -9,9 +9,11 @@ import ai.flox.network.openai.OpenAIService
 import ai.flox.state.Action
 import ai.flox.state.State
 import ai.flox.storage.chat.ChatDAO
+import android.content.Context
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
+import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import dagger.multibindings.IntoMap
 import dagger.multibindings.StringKey
@@ -25,8 +27,9 @@ object ChatModule {
     @Provides
     fun provideChatRepository(
         openAIService: OpenAIService,
-        chatDao: ChatDAO
-    ): ChatRepository = ChatRepository(openAIService, chatDao)
+        chatDao: ChatDAO,
+        @ApplicationContext context: Context
+    ): ChatRepository = ChatRepository(openAIService, chatDao, context)
 
     @Provides
     @IntoMap

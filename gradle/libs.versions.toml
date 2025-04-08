@@ -1,7 +1,7 @@
 [versions]
 minsdk="24"
 compilesdk="34"
-targetsdk="34"
+targetsdk="28"
 agp = "8.8.0"
 kotlin = "1.9.23"
 core-ktx = "1.12.0"
@@ -24,6 +24,8 @@ material = "1.9.0"
 navigation-compose = "2.7.6"
 moshi = "1.15.0"
 coil = "2.5.0"
+tensorflow-lite = "2.14.0"
+tensorflow-lite-support = "0.4.4"
 
 [libraries]
 core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "core-ktx" }
@@ -66,6 +68,8 @@ moshi-codegen = { group = "com.squareup.moshi", name = "moshi-kotlin-codegen", v
 room = { group = "androidx.room", name = "room-runtime", version.ref = "room" }
 room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "room" }
 room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }
+tensorflow-lite = { group = "org.tensorflow", name = "tensorflow-lite", version.ref = "tensorflow-lite" }
+tensorflow-lite-support = { group = "org.tensorflow", name = "tensorflow-lite-support", version.ref = "tensorflow-lite-support" }
 
 android-gradle-plugin = { module = "com.android.tools.build:gradle", version.ref = "agp" }
 kotlin-gradle-plugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }

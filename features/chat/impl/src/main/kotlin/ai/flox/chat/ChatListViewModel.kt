@@ -31,6 +31,19 @@ class ChatListViewModel @Inject constructor(
     @Synchronized
     override fun reduce(state: ChatState, action: Action): ReduceResult<ChatState, Action> {
         return when (action) {
+            is ChatAction.RecordMessage -> {
+                state.copy(composeState = ChatState.ComposeState.Loading(state.composeState.userInput))
+                    .withFlowEffect(
+                            chatRepository.recordMessage(
+                                ChatMessage(
+                                    message = action.message,
+                                    userId = "self",
+                                    conversation = action.conversation,
+                                    timestamp = Date(System.currentTimeMillis())
+                                )
+                            )
+                    )
+            }
             is ChatAction.SendMessage -> {
                 state.copy(composeState = ChatState.ComposeState.Loading(state.composeState.userInput))
                     .withFlowEffect(
@@ -66,7 +79,7 @@ class ChatListViewModel @Inject constructor(
             }
 
             is ChatAction.RenderChatList -> {
-                state.withFlowEffect(
+                state.copy(conversation = action.conversation).withFlowEffect(
                     merge(
                         chatRepository.getChatMessages(action.conversation), flowOf(
                             Action.Navigate(route = ChatRoutes.chat)

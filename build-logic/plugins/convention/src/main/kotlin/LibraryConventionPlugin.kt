@@ -44,6 +44,10 @@ class LibraryConventionPlugin : Plugin<Project> {
                         )
                     }
                 }
+                // Specify the ABIs to exclude
+                ndk {
+                    abiFilters.add("arm64-v8a")
+                }
             }
 
             dependencies {

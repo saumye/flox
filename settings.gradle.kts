@@ -28,3 +28,4 @@ include(":features:home:api")
 include(":features:home:impl")
 
 include(":core:tts")
+include(":core:asr")
