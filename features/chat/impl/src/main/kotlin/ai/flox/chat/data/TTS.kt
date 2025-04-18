@@ -16,13 +16,15 @@ import kotlinx.coroutines.launch
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
+import java.util.concurrent.locks.Lock
 
 class TTS(private val context: Context) {
     private val TAG: String = "TTS"
-    private lateinit var tts: OfflineTts
+    private var tts: OfflineTts
     private lateinit var track: AudioTrack
     private var stopped: Boolean = false
     private var mediaPlayer: MediaPlayer? = null
+    private val lock = Object()
 
     init {
         var modelDir: String?
@@ -80,35 +82,41 @@ class TTS(private val context: Context) {
 
     // this function is called from C++
     private fun callback(samples: FloatArray): Int {
-        if (!stopped) {
-            track.write(samples, 0, samples.size, AudioTrack.WRITE_BLOCKING)
-            return 1
-        } else {
-            track.stop()
-            return 0
+        Log.d(TAG,"callback called with ${samples.size}")
+        synchronized(lock) {
+            if (!stopped) {
+                Log.d(TAG,"track.write called with ${samples.size}")
+                track.write(samples, 0, samples.size, AudioTrack.WRITE_BLOCKING)
+                return 1
+            } else {
+                track.stop()
+                return 0
+            }
         }
     }
 
     fun generate(textStr: String) {
+        Log.d(TAG,"generate called with $textStr")
         track.pause()
         track.flush()
         track.play()
         stopped = false
         Thread {
-            val audio = tts.generateWithCallback(
+            Log.d(TAG,"generateWithCallback called with $textStr")
+            tts.generateWithCallback(
                 text = textStr,
-                sid = 0,
+                sid = 3,
                 speed = 1.0f,
                 callback = this::callback
             )
-
-            val filename = context.filesDir.absolutePath + "/generated.wav"
-            val ok = audio.samples.size > 0 && audio.save(filename)
-            if (ok) {
-                MainScope().launch {
-                    track.stop()
-                }
-            }
+            Log.d(TAG,"generateWithCallback called with $textStr")
+//            val filename = context.filesDir.absolutePath + "/generated.wav"
+//            val ok = audio.samples.isNotEmpty() && audio.save(filename)
+//            if (ok) {
+//                MainScope().launch {
+//                    track.stop()
+//                }
+//            }
         }.start()
     }
 

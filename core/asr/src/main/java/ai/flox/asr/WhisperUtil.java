@@ -25,7 +25,6 @@ public class WhisperUtil {
     public static final int WHISPER_N_MEL = 80;
     public static final int WHISPER_HOP_LENGTH = 160;
     public static final int WHISPER_CHUNK_SIZE = 30;
-    public static final int WHISPER_MEL_LEN = 3000;
 
     private final WhisperVocab vocab = new WhisperVocab();
     private final WhisperFilter filters = new WhisperFilter();

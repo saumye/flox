@@ -107,6 +107,12 @@ public class Whisper {
         return mInProgress.get();
     }
 
+    public void transcribeBuffer(float[] samples) {
+        Log.d(TAG, samples.length+"");
+        String result = mWhisperEngine.transcribeBuffer(samples);
+        sendResult(result);
+    }
+
     private void transcribeFileLoop() {
         while (!Thread.currentThread().isInterrupted()) {
             taskLock.lock();

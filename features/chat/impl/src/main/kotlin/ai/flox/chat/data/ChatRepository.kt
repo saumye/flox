@@ -46,32 +46,51 @@ class ChatRepository @Inject constructor(
     }
 
     fun recordMessage(message: ChatMessage): Flow<ChatAction> {
-        return if (s2t.isRecording() == true) {
-            callbackFlow {
-                s2t.setListener(object : Whisper.WhisperListener {
-                    override fun onUpdateReceived(message: String) {
-                        Log.d(TAG, "Update is received, Message: $message")
-                    }
+        return callbackFlow {
+            s2t.startStreaming(object : Whisper.WhisperListener {
+                override fun onUpdateReceived(message: String) {
+                    Log.d(TAG, "Update is received, Message: $message")
+                }
 
-                    override fun onResultReceived(result: String) {
-                        Log.d(TAG, "Result: $result")
-                        trySendBlocking(
-                            ChatAction.SendMessage(
-                                message = result,
-                                conversation = message.conversation
-                            )
+                override fun onResultReceived(result: String) {
+                    Log.d(TAG, "Result: $result")
+                    trySendBlocking(
+                        ChatAction.UpdateVoiceInput(
+                            message = result,
+                            conversation = message.conversation
                         )
-                    }
-                })
-                s2t.transcribe()
-                awaitClose { s2t.setListener(null)}
-            }
-        } else {
-            flow {
-                s2t.startRecording()
+                    )
+                }
+            })
+            awaitClose {
+                s2t.startStreaming(null)
             }
         }
     }
+//            callbackFlow {
+//                s2t.setListener(object : Whisper.WhisperListener {
+//                    override fun onUpdateReceived(message: String) {
+//                        Log.d(TAG, "Update is received, Message: $message")
+//                    }
+//
+//                    override fun onResultReceived(result: String) {
+//                        Log.d(TAG, "Result: $result")
+//                        trySendBlocking(
+//                            ChatAction.SendMessage(
+//                                message = result,
+//                                conversation = message.conversation
+//                            )
+//                        )
+//                    }
+//                })
+//                s2t.startStreaming()
+//            }
+//        } else {
+//            flow {
+//                s2t.startStreaming()
+//            }
+//        }
+//    }
 
     fun sendMessage(message: ChatMessage): Flow<ChatAction> {
         return flow {
@@ -82,12 +101,11 @@ class ChatRepository @Inject constructor(
             val response = openAIService.completions(OpenAIRequest.fromDomain(message.message))
             if (response is NetworkResource.Success) {
                 response.data?.let {
-                    tts.generate(
-                        it.toDomain(
-                            Date(System.currentTimeMillis()),
-                            message.conversation
-                        ).message
-                    )
+                    val textStr = it.toDomain(
+                        Date(System.currentTimeMillis()),
+                        message.conversation
+                    ).message
+                    for(text in textStr.split(".",",","!")) if(text.isNotEmpty()) tts.generate(text)
                     chatDAO.insertOrUpdate(
                         it.toDomain(
                             Date(System.currentTimeMillis()),

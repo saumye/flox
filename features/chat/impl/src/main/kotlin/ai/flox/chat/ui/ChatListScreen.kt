@@ -75,6 +75,9 @@ fun ChatListScreen(
                     ChatMessage(list[index])
                 })
             }
+            LaunchedEffect(list.size) {
+                listState.animateScrollToItem(list.size)
+            }
         }
         ComposeBox(
             composeState = state.composeState,

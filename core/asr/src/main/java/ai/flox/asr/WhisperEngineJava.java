@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.channels.FileChannel;
+import java.util.Arrays;
 
 public class WhisperEngineJava implements WhisperEngine {
     private final String TAG = "WhisperEngineJava";
@@ -71,19 +72,18 @@ public class WhisperEngineJava implements WhisperEngine {
     public String transcribeFile(String wavePath) {
         // Calculate Mel spectrogram
         Log.d(TAG, "Calculating Mel spectrogram...");
-        float[] melSpectrogram = getMelSpectrogram(wavePath);
-        Log.d(TAG, "Mel spectrogram is calculated...!");
-
-        // Perform inference
-        String result = runInference(melSpectrogram);
-        Log.d(TAG, "Inference is executed...!");
-
-        return result;
+        // Get samples in PCM_FLOAT format
+        float[] samples = WaveUtil.getSamples(wavePath);
+        return transcribeBuffer(samples);
     }
 
     @Override
     public String transcribeBuffer(float[] samples) {
-        return null;
+        float[] melSpectrogram = getMelSpectrogram(samples);
+        Log.d(TAG, "Mel spectrogram is calculated for samples: "+ Arrays.toString(samples)+"\n melSpectogram:"+Arrays.toString(melSpectrogram));
+
+        // Perform inference
+        return runInference(melSpectrogram);
     }
 
     // Load TFLite model
@@ -140,29 +140,26 @@ public class WhisperEngineJava implements WhisperEngine {
         mInterpreter = new Interpreter(tfliteModel, options);
     }
 
-    private float[] getMelSpectrogram(String wavePath) {
-        // Get samples in PCM_FLOAT format
-        float[] samples = WaveUtil.getSamples(wavePath);
-
+    private float[] getMelSpectrogram(float[] samples) {
         int fixedInputSize = WhisperUtil.WHISPER_SAMPLE_RATE * WhisperUtil.WHISPER_CHUNK_SIZE;
         float[] inputSamples = new float[fixedInputSize];
         int copyLength = Math.min(samples.length, fixedInputSize);
         System.arraycopy(samples, 0, inputSamples, 0, copyLength);
 
         int cores = Runtime.getRuntime().availableProcessors();
-        return mWhisperUtil.getMelSpectrogram(inputSamples, inputSamples.length, cores);
+        return mWhisperUtil.getMelSpectrogram(inputSamples, inputSamples.length, 2*cores);
     }
 
     private String runInference(float[] inputData) {
         // Create input tensor
         Tensor inputTensor = mInterpreter.getInputTensor(0);
         TensorBuffer inputBuffer = TensorBuffer.createFixedSize(inputTensor.shape(), inputTensor.dataType());
-//        printTensorDump("Input Tensor Dump ===>", inputTensor);
+        // printTensorDump("Input Tensor Dump ===>", inputTensor);
 
         // Create output tensor
         Tensor outputTensor = mInterpreter.getOutputTensor(0);
         TensorBuffer outputBuffer = TensorBuffer.createFixedSize(outputTensor.shape(), DataType.FLOAT32);
-//        printTensorDump("Output Tensor Dump ===>", outputTensor);
+        // printTensorDump("Output Tensor Dump ===>", outputTensor);
 
         // Load input data
         int inputSize = inputTensor.shape()[0] * inputTensor.shape()[1] * inputTensor.shape()[2] * Float.BYTES;
