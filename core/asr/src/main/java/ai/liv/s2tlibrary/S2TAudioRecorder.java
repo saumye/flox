@@ -7,30 +7,24 @@ import android.media.AudioFormat;
 import android.media.AudioRecord;
 import android.media.MediaRecorder;
 import android.os.AsyncTask;
-import android.os.Handler;
 import android.os.Process;
 import android.util.Log;
-
-import org.json.JSONObject;
-import java.io.File;
-import java.io.IOException;
 import java.nio.BufferOverflowException;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
 import java.nio.ReadOnlyBufferException;
 import java.util.Arrays;
-import java.util.Calendar;
-import java.util.Date;
 
 import static ai.liv.s2tlibrary.S2TConstants.LOG_TAG;
 import static ai.liv.s2tlibrary.S2TConstants.PREF_TIMER_INTERVAL_VAL;
 import static ai.liv.s2tlibrary.S2TConstants.State;
+import static com.k2fsa.sherpa.onnx.VadKt.getVadModelConfig;
 import static android.os.Process.THREAD_PRIORITY_BACKGROUND;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.app.ActivityCompat;
+
+import com.k2fsa.sherpa.onnx.Vad;
 
 import ai.flox.asr.Whisper;
 
@@ -42,6 +36,8 @@ public class S2TAudioRecorder {
 
     private boolean oneRun;
 
+    private Vad vad;
+
     private static final String TAG = "S2TAudioRecorder";
     private static final String ISSUE_TAG = "IssueTag";
 
@@ -49,7 +45,7 @@ public class S2TAudioRecorder {
 
 
     // The interval (in millisec) in which the recorded samples are output to the file
-    private int listenerTimerInterval = 1000;
+    private int listenerTimerInterval = 500;
 
     private int numFramesInASecond;
 
@@ -61,10 +57,7 @@ public class S2TAudioRecorder {
     // Audio Recorder instance
     private AudioRecord audioRecorder;
 
-    //VAD instance
-    private S2TVAD vad = null;
-
-    private boolean vadOn = false;
+    private boolean vadOn = true;
 
     private boolean splitFlag = true;
 
@@ -74,18 +67,18 @@ public class S2TAudioRecorder {
     private int rec_idx;
 
     // Number of channels, sample rate, sample size(size in bits), buffer size, audio source, sample size(see AudioFormat)
-    private short                    nChannels;
-    private int                      sRate;
-    private short                    bSamples;
-    private int                      bufferSize;
-    private int                      aSource;
-    private int                      aFormat;
+    private short nChannels;
+    private int sRate;
+    private short bSamples;
+    private int bufferSize;
+    private int aSource;
+    private int aFormat;
 
     // Number of frames written to file on each output(only in uncompressed mode)
-    private int                      framePeriod;
+    private int framePeriod;
 
     // Buffer for output(only in uncompressed mode)
-    private float[]                   buffer;
+    private float[] buffer;
 
     // ByteBuffer storing recorded bytes for TIMER_INTERVAL+EXTRA_TIMER_INTERVAL
     private FloatBuffer fileBuffer;
@@ -94,7 +87,6 @@ public class S2TAudioRecorder {
     private int readDataCount;
 
     private Context mContext;
-    double bufferLengthSum = 0;
 
     private Whisper mWhisper;
 
@@ -114,14 +106,7 @@ public class S2TAudioRecorder {
         int i=0;
         do
         {
-            recorder = new S2TAudioRecorder(c,
-                    MediaRecorder.AudioSource.MIC,
-                    sampleRates[i],
-                    AudioFormat.CHANNEL_IN_MONO,
-                    AudioFormat.ENCODING_PCM_FLOAT,
-                    whisper
-                    );
-
+            recorder = new S2TAudioRecorder(c, MediaRecorder.AudioSource.MIC, sampleRates[i], AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_FLOAT, whisper);
         } while((++i<sampleRates.length) & !(recorder.state == State.INITIALIZING));
 
         return recorder;
@@ -188,7 +173,7 @@ public class S2TAudioRecorder {
 
             state = State.INITIALIZING;
             if(vadOn) {
-                vad = new S2TVAD(sRate);
+                vad = new Vad(mContext.getAssets(), getVadModelConfig(0));
             }
         } catch (Exception e)
         {
@@ -212,9 +197,9 @@ public class S2TAudioRecorder {
     {
         public void onPeriodicNotification(AudioRecord recorder)
         {
+            Log.d(TAG,"onPeriodicNotification");
             if(sendTranscription) {
                 readDataFromBuffer();
-                //new ReadTask().execute();
             }
         }
 
@@ -224,16 +209,11 @@ public class S2TAudioRecorder {
         }
     };
 
-    long getAnimationRefreshTime(){
-        return listenerTimerInterval;       //Currently refresh everytime the buffer copies, can be edited later
-    }
-
     private synchronized void init() {
         
         oneRun = false;
         rec_idx = 0;
         readDataCount = 0;
-        
         audioRecorder.setRecordPositionUpdateListener(updateListener);
         audioRecorder.setPositionNotificationPeriod(framePeriod);
         should_stop = false;
@@ -404,38 +384,28 @@ public class S2TAudioRecorder {
     // Buffer Read and write methods
     //==============================================================================================
     private synchronized void readDataFromBuffer() {
-
         if (oneRun) {
             return;
         }
-        int bytesRead = audioRecorder.read(buffer, 0, buffer.length, AudioRecord.READ_NON_BLOCKING); // Fill buffer
-        int sum = 0;
-
-        for(int i = 0; i < buffer.length; i++) {
-            sum += buffer[i] * buffer[i];
-        }
-        // Log.d(TAG,"copy+sum end:"+System.currentTimeMillis());
-        bufferLengthSum += buffer.length;
-
-        double amplitude = sum/bufferLengthSum;
-        bufferLengthSum = 0;
+        audioRecorder.read(buffer, 0, buffer.length, AudioRecord.READ_NON_BLOCKING); // Fill buffer
         try{
-            // Log.d(TAG, "readDataFromBuffer"+Arrays.toString(buffer));
             fileBuffer.put(buffer);
         }catch (@NonNull BufferOverflowException | ReadOnlyBufferException ex){
-            // ErrorHelper.getInstance().sendError(S2TError.ERROR_AUDIO_BUFFER, ex.getMessage());
             return;
         }
 
         readDataCount++;
 
-        if(vadOn) {
-            if (vad.non_speech_detected) {
+        if(vadOn && rec_idx >= 2) {
+            vad.acceptWaveform(buffer);
+            boolean speechDetected = vad.isSpeechDetected();
+            vad.clear();
+            Log.d(TAG,"VAD Speech Detected: "+speechDetected);
+            if (!speechDetected) {
                 should_stop = true;
-            } else {
-                new FFTTask(FloatBuffer.wrap(buffer)).execute(null, null, null);
             }
         }
+
         // Log.d(TAG,"fileBuffer.put end:"+System.currentTimeMillis());
         if (should_stop || readDataCount >= splitAudioDurationInMillis/listenerTimerInterval) {//
 
@@ -460,8 +430,7 @@ public class S2TAudioRecorder {
                             end = ((rec_idx) * (sizeOfBuffer));
                         }
                     }
-                    ReadBufferTask rb = new ReadBufferTask(rec_idx);
-                    rb.execute(0,end);
+                    new ReadBufferTask(rec_idx).execute(0,end);
                 }else {
                     // ErrorHelper.getInstance().sendError(S2TError.ERROR_IN_AUDIO);
                 }
@@ -470,7 +439,7 @@ public class S2TAudioRecorder {
             if (should_stop) {
                 oneRun = true;
                 if(vadOn) {
-                    vad.reset_vad_params();
+                    vad.reset();
                 }
             }
         }
@@ -480,40 +449,37 @@ public class S2TAudioRecorder {
     //==============================================================================================
     // Local Utilities
     //==============================================================================================
-
-    // Interface exposed to RecordFragment for triggering onStop()
-    interface S2TAudioRecorderCallbacks{
-        void onStopRecording();
-        void onResponseFromServer(String[] text_list,JSONObject intent, double[] confidence_list);
-        void onAmplitudeChanged(double amplitude);
-    }
-
-
-    private class FFTTask extends AsyncTask<String, String, String> {
-        FloatBuffer bb;
-        FFTTask(FloatBuffer bb){
-            this.bb = bb;
-        }
-        @Nullable
-        @Override
-        protected String doInBackground(String... params) {
-            // vad.calcAndStop(this.bb);
-            return null;
-        }
-    }
+//
+//    private class FFTTask extends AsyncTask<Void, Void, Void> {
+//        float[] samples;
+//        FFTTask(float[] samples) {
+//            super();
+//            this.samples = samples;
+//        }
+//
+//        @Nullable
+//        @Override
+//        protected Void doInBackground(Void... params) {
+//
+//            Process.setThreadPriority(THREAD_PRIORITY_BACKGROUND);
+//            vad.acceptWaveform(samples);
+//            boolean speechDetected = vad.isSpeechDetected();
+//            vad.clear();
+//            Log.d(TAG,"VAD Speech Detected: "+speechDetected);
+//            if (!speechDetected) {
+//                should_stop = true;
+//            }
+//
+//            return null;
+//        }
+//
+//    }
 
     private class ReadBufferTask extends AsyncTask<Integer, Void, Void> {
         int r_idx;
         public ReadBufferTask(int id) {
             super();
             r_idx = id;
-        }
-
-        public float[] byteToFloat (byte[] byteArray){
-            float[] floatOut = new float[byteArray.length / 4];
-            ByteBuffer byteBuffer = ByteBuffer.wrap(byteArray);
-            byteBuffer.order(ByteOrder.LITTLE_ENDIAN).asFloatBuffer().get(floatOut);
-            return floatOut;
         }
 
         @Nullable
@@ -523,17 +489,8 @@ public class S2TAudioRecorder {
             Process.setThreadPriority(THREAD_PRIORITY_BACKGROUND);
             int start = params[0];
             int end = params[1];
-            //int start = 0;
-            //int end = 15361;
-            /*final byte[] array = fileBuffer.array();
-            final int arrayOffset = fileBuffer.arrayOffset();
-            byte[] temp = Arrays.copyOfRange(array, arrayOffset,
-                    arrayOffset + fileBuffer.position());
-            */
 
             final float[] array = fileBuffer.array();
-
-            // Log.v(TAG,"start:"+start+",end:"+end +"fileBuffer.position():"+fileBuffer.position());
 
             //Method1
             final int arrayOffset = fileBuffer.arrayOffset();
@@ -557,39 +514,6 @@ public class S2TAudioRecorder {
         @Override
         protected void onProgressUpdate(Void... values) {
             super.onProgressUpdate(values);
-        }
-    }
-
-    private class ResponseTimeout implements Runnable{
-
-        private boolean killMe = false;
-        private String appSessionId;
-
-        ResponseTimeout(String appSessionId){
-            this.appSessionId = appSessionId;
-        }
-
-        @Override
-        public void run(){
-            if(!killMe) {
-                if(appSessionId.equalsIgnoreCase(appSessionId)) {
-                    // ErrorHelper.getInstance().sendError(S2TError.ERROR_NO_INTERNET_TIMEOUT);
-                    killMe = true;
-                }
-            }
-        }
-
-        void killTimeout(){
-            killMe = true;
-        }
-    }
-
-    private class ReadTask extends AsyncTask<String, String, String> {
-        @Nullable
-        @Override
-        protected String doInBackground(String... params) {
-            readDataFromBuffer();
-            return null;
         }
     }
 }

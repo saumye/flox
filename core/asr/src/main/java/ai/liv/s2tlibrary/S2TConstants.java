@@ -35,7 +35,7 @@ public class S2TConstants {
      * Timers
      */
     protected static final int PREF_TIMER_INTERVAL_VAL = 15;
-    protected static final int BREAK_INTERVAL = 5000;
+    protected static final int BREAK_INTERVAL = 2500;
 
     /**
      *  Endpoints
