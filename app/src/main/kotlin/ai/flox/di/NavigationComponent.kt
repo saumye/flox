@@ -2,6 +2,8 @@ package ai.flox.di
 
 import ai.flox.AppState
 import ai.flox.Navigable
+import ai.flox.advanced.AdvancedModeNavigator
+import ai.flox.advanced.model.AdvancedModeState
 import ai.flox.arch.Store
 import ai.flox.chat.ChatNavigator
 import ai.flox.chat.model.ChatState
@@ -57,5 +59,11 @@ object NavigationComponent {
     @Singleton
     fun provideConversationRoutes(store: Store<State, Action>): Navigable {
         return ConversationNavigator(store, store.state.map(CoroutineScope(Dispatchers.Main)) { if(it is AppState) it.featureStates[ConversationState.stateKey] as ConversationState else ConversationState() })
+    }
+    @Provides
+    @IntoSet
+    @Singleton
+    fun provideAdvancedModeRoutes(store: Store<State, Action>): Navigable {
+        return AdvancedModeNavigator(store, store.state.map(CoroutineScope(Dispatchers.Main)) { if(it is AppState) it.featureStates[AdvancedModeState.stateKey] as AdvancedModeState else AdvancedModeState() })
     }
 }

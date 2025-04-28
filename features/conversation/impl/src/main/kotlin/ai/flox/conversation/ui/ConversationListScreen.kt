@@ -46,7 +46,7 @@ fun ConversationListScreen(
     store: Store<State, Action>
 ) {
     val state: ConversationState by stateFlow.collectAsStateWithLifecycle()
-    LaunchedEffect(state) {
+    LaunchedEffect(state.recentConversationList.size) {
         store.dispatch(ConversationAction.RenderConversationList)
     }
     state.recentConversationList.let {

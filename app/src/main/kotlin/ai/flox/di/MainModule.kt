@@ -3,6 +3,7 @@ package ai.flox.di
 import ai.flox.AppState
 import ai.flox.GlobalReducer
 import ai.flox.NavigationReducer
+import ai.flox.advanced.model.AdvancedModeState
 import ai.flox.arch.CompositeReducer
 import ai.flox.arch.PullbackReducer
 import ai.flox.arch.Reducer
@@ -85,6 +86,16 @@ object MainModule {
                         mapToParentState = { state, homeState ->
                             state.copy(featureStates = state.featureStates.toMutableMap()
                                     .apply { put(HomeState.stateKey, homeState) })
+                        },
+                    ),
+                    PullbackReducer(
+                        innerReducer = reducers[AdvancedModeState.stateKey] as Reducer<AdvancedModeState, Action>,
+                        mapToChildAction = { action -> action },
+                        mapToChildState = { state -> state.featureStates[AdvancedModeState.stateKey] as AdvancedModeState },
+                        mapToParentAction = { action -> action },
+                        mapToParentState = { state, advancedState ->
+                            state.copy(featureStates = state.featureStates.toMutableMap()
+                                .apply { put(AdvancedModeState.stateKey, advancedState) })
                         },
                     )
                 )

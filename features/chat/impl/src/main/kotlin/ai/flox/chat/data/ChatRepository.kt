@@ -30,8 +30,6 @@ class ChatRepository @Inject constructor(
     @ApplicationContext private val application: Context
 ) {
     private val TAG: String = "ChatRepository"
-    private val s2t: S2T = S2T(application)
-    private val tts: TTS = TTS(application)
 
     fun getChatMessages(conversation: Conversation): Flow<ChatAction> {
         return flow {
@@ -45,53 +43,6 @@ class ChatRepository @Inject constructor(
         }
     }
 
-    fun recordMessage(message: ChatMessage): Flow<ChatAction> {
-        return callbackFlow {
-            s2t.startStreaming(object : Whisper.WhisperListener {
-                override fun onUpdateReceived(message: String) {
-                    Log.d(TAG, "Update is received, Message: $message")
-                }
-
-                override fun onResultReceived(result: String) {
-                    Log.d(TAG, "Result: $result")
-                    trySendBlocking(
-                        ChatAction.UpdateVoiceInput(
-                            message = result,
-                            conversation = message.conversation
-                        )
-                    )
-                }
-            })
-            awaitClose {
-                s2t.startStreaming(null)
-            }
-        }
-    }
-//            callbackFlow {
-//                s2t.setListener(object : Whisper.WhisperListener {
-//                    override fun onUpdateReceived(message: String) {
-//                        Log.d(TAG, "Update is received, Message: $message")
-//                    }
-//
-//                    override fun onResultReceived(result: String) {
-//                        Log.d(TAG, "Result: $result")
-//                        trySendBlocking(
-//                            ChatAction.SendMessage(
-//                                message = result,
-//                                conversation = message.conversation
-//                            )
-//                        )
-//                    }
-//                })
-//                s2t.startStreaming()
-//            }
-//        } else {
-//            flow {
-//                s2t.startStreaming()
-//            }
-//        }
-//    }
-
     fun sendMessage(message: ChatMessage): Flow<ChatAction> {
         return flow {
             chatDAO.insertOrUpdate(message.toLocal(message.conversation))
@@ -101,11 +52,6 @@ class ChatRepository @Inject constructor(
             val response = openAIService.completions(OpenAIRequest.fromDomain(message.message))
             if (response is NetworkResource.Success) {
                 response.data?.let {
-                    val textStr = it.toDomain(
-                        Date(System.currentTimeMillis()),
-                        message.conversation
-                    ).message
-                    for(text in textStr.split(".",",","!")) if(text.isNotEmpty()) tts.generate(text)
                     chatDAO.insertOrUpdate(
                         it.toDomain(
                             Date(System.currentTimeMillis()),

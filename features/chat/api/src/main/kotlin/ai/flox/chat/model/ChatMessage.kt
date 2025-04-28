@@ -12,6 +12,11 @@ data class ChatMessage(
     val id: String = UUID.randomUUID().toString(),
     val messageState: SyncStatus = SyncStatus.SYNC_NEEDED
 ) {
-    fun isSelf()= userId.equals("self",ignoreCase = true)
+    fun isSelf()= userId.equals(USER_ID_SELF,ignoreCase = true)
+
+    companion object {
+        const val USER_ID_SELF = "self"
+        const val USER_ID_AI = "AI"
+    }
 }
 

@@ -1,5 +1,7 @@
 package ai.flox.chat.ui
 
+import ai.flox.advanced.AdvancedModeRoutes
+import ai.flox.advanced.model.AdvancedModeAction
 import ai.flox.arch.Store
 import ai.flox.chat.R
 import ai.flox.chat.model.ChatAction
@@ -99,7 +101,7 @@ fun ChatListScreen(
 fun ComposeBox(
     composeState: ChatState.ComposeState,
     conversation: Conversation?,
-    dispatchEvent: (ChatAction) -> Unit,
+    dispatchEvent: (Action) -> Unit,
     modifier: Modifier = Modifier
 ) {
     var text by rememberSaveable { mutableStateOf(composeState.userInput) }
@@ -159,9 +161,7 @@ fun ComposeBox(
                         .size(48.dp)
                         .clickable {
                             conversation?.let {
-                                dispatchEvent(
-                                    ChatAction.RecordMessage(text, it)
-                                )
+                                dispatchEvent(AdvancedModeAction.RenderAdvancedMode(conversation = conversation))
                             }
                         },
                     imageVector = ImageVector.vectorResource(R.drawable.ic_mic),

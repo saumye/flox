@@ -147,7 +147,7 @@ public class WhisperEngineJava implements WhisperEngine {
         System.arraycopy(samples, 0, inputSamples, 0, copyLength);
 
         int cores = Runtime.getRuntime().availableProcessors();
-        return mWhisperUtil.getMelSpectrogram(inputSamples, inputSamples.length, 2*cores);
+        return mWhisperUtil.getMelSpectrogram(inputSamples, inputSamples.length, 4);
     }
 
     private String runInference(float[] inputData) {

@@ -6,13 +6,13 @@ plugins {
 }
 
 android {
-    namespace = "ai.flox.chat"
+    namespace = "ai.flox.advanced"
 }
 
 dependencies {
+    implementation(project(":features:advanced:api"))
     implementation(project(":features:chat:api"))
     implementation(project(":features:conversation:api"))
-    implementation(project(":features:advanced:api"))
     implementation(project(":core:storage"))
     implementation(project(":core:network"))
     implementation(project(":core:base"))

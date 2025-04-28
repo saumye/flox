@@ -7,13 +7,11 @@ import ai.flox.arch.noEffect
 import ai.flox.arch.withFlowEffect
 import ai.flox.chat.data.ChatRepository
 import ai.flox.chat.model.ChatAction
-import ai.flox.chat.model.ChatIds
 import ai.flox.chat.model.ChatMessage
 import ai.flox.chat.model.ChatState
 import ai.flox.conversation.model.Conversation
 import ai.flox.conversation.model.ConversationAction
 import ai.flox.state.Action
-import ai.flox.state.ComponentIdentifier
 import ai.flox.state.Resource
 import androidx.lifecycle.ViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -31,22 +29,6 @@ class ChatListViewModel @Inject constructor(
     @Synchronized
     override fun reduce(state: ChatState, action: Action): ReduceResult<ChatState, Action> {
         return when (action) {
-            is ChatAction.UpdateVoiceInput -> {
-                state.copy(voiceInputState = ChatState.VoiceState(action.message)).noEffect()
-            }
-            is ChatAction.RecordMessage -> {
-                state.copy(composeState = ChatState.ComposeState.LoadComplete(state.composeState.userInput))
-                    .withFlowEffect(
-                            chatRepository.recordMessage(
-                                ChatMessage(
-                                    message = action.message,
-                                    userId = "self",
-                                    conversation = action.conversation,
-                                    timestamp = Date(System.currentTimeMillis())
-                                )
-                            )
-                    )
-            }
             is ChatAction.SendMessage -> {
                 state.copy(composeState = ChatState.ComposeState.LoadComplete())
                     .withFlowEffect(
@@ -54,7 +36,7 @@ class ChatListViewModel @Inject constructor(
                             chatRepository.sendMessage(
                                 ChatMessage(
                                     message = action.message,
-                                    userId = "self",
+                                    userId = ChatMessage.USER_ID_SELF,
                                     conversation = action.conversation,
                                     timestamp = Date(System.currentTimeMillis())
                                 )

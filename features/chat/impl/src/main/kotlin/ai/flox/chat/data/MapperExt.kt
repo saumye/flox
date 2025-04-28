@@ -7,7 +7,7 @@ import ai.flox.storage.chat.model.ChatMessageEntity
 import java.util.Date
 
 fun CompletionsResponse.toDomain(timestamp: Date, conversation: Conversation): ChatMessage {
-    return ChatMessage(message = choices[0].message.content, timestamp = timestamp, userId = "AI", conversation = conversation)
+    return ChatMessage(message = choices[0].message.content, timestamp = timestamp, userId = ChatMessage.USER_ID_AI, conversation = conversation)
 }
 
 fun ChatMessageEntity.toDomain(conversation: Conversation): ChatMessage {

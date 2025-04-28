@@ -13,11 +13,7 @@ sealed interface ChatAction : Action {
         override val componentIdentifier = ChatIds.BtnSend
     }
 
-    data class UpdateVoiceInput(val message: String, val conversation: Conversation) : Action.UI.ClickedEvent, ChatAction {
-        override val componentIdentifier = ChatIds.InputText
-    }
-
-    data class RecordMessage(val message: String, val conversation: Conversation) : Action.UI.ClickedEvent, ChatAction {
+    data class AdvancedMode(val message: String, val conversation: Conversation) : Action.UI.ClickedEvent, ChatAction {
         override val componentIdentifier = ChatIds.RecordMsg
     }
 

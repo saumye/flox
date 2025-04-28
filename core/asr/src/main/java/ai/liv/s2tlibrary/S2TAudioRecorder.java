@@ -30,7 +30,7 @@ import ai.flox.asr.Whisper;
 
 public class S2TAudioRecorder {
 
-    private Boolean should_stop;
+    public Boolean should_stop;
 
     private boolean sendTranscription = true;
 
@@ -79,6 +79,8 @@ public class S2TAudioRecorder {
 
     // Buffer for output(only in uncompressed mode)
     private float[] buffer;
+
+    public boolean speechDetected = true;
 
     // ByteBuffer storing recorded bytes for TIMER_INTERVAL+EXTRA_TIMER_INTERVAL
     private FloatBuffer fileBuffer;
@@ -197,7 +199,6 @@ public class S2TAudioRecorder {
     {
         public void onPeriodicNotification(AudioRecord recorder)
         {
-            Log.d(TAG,"onPeriodicNotification");
             if(sendTranscription) {
                 readDataFromBuffer();
             }
@@ -396,9 +397,9 @@ public class S2TAudioRecorder {
 
         readDataCount++;
 
-        if(vadOn && rec_idx >= 2) {
+        if(vadOn && rec_idx >= 1) {
             vad.acceptWaveform(buffer);
-            boolean speechDetected = vad.isSpeechDetected();
+            speechDetected = vad.isSpeechDetected();
             vad.clear();
             Log.d(TAG,"VAD Speech Detected: "+speechDetected);
             if (!speechDetected) {
@@ -496,12 +497,12 @@ public class S2TAudioRecorder {
             final int arrayOffset = fileBuffer.arrayOffset();
             float[] temp = Arrays.copyOfRange(array, arrayOffset+start, arrayOffset+end);
             Log.v(TAG,"temp:"+Arrays.toString(temp));
-            mWhisper.transcribeBuffer(temp);
 
             //fileBuffer.clear();       TODO
 
             if(should_stop) {
                 try{
+                    mWhisper.transcribeBuffer(temp);
                     publishProgress();
                 }
                 catch (Exception e){

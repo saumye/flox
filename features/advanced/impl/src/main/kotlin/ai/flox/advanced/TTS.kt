@@ -1,4 +1,4 @@
-package ai.flox.chat.data
+package ai.flox.advanced
 
 import android.content.Context
 import android.content.res.AssetManager
@@ -11,20 +11,24 @@ import android.net.Uri
 import android.util.Log
 import com.k2fsa.sherpa.onnx.OfflineTts
 import com.k2fsa.sherpa.onnx.getOfflineTtsConfig
-import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
-import java.util.concurrent.locks.Lock
 
 class TTS(private val context: Context) {
     private val TAG: String = "TTS"
     private var tts: OfflineTts
-    private lateinit var track: AudioTrack
+    // private lateinit var track: AudioTrack
     private var stopped: Boolean = false
-    private var mediaPlayer: MediaPlayer? = null
     private val lock = Object()
+    val generatedAudio: MutableSharedFlow<FloatArray> = MutableSharedFlow()
 
     init {
         var modelDir: String?
@@ -77,29 +81,36 @@ class TTS(private val context: Context) {
 
         tts = OfflineTts(assetManager = assets, config = config)
 
-        initAudioTrack()
+        // initAudioTrack()
     }
 
     // this function is called from C++
     private fun callback(samples: FloatArray): Int {
         Log.d(TAG,"callback called with ${samples.size}")
-        synchronized(lock) {
-            if (!stopped) {
-                Log.d(TAG,"track.write called with ${samples.size}")
-                track.write(samples, 0, samples.size, AudioTrack.WRITE_BLOCKING)
-                return 1
-            } else {
-                track.stop()
-                return 0
-            }
+        CoroutineScope(Dispatchers.IO).launch {
+            generatedAudio.emit(samples)
         }
+        return 1
+//        synchronized(lock) {
+//            if (!stopped) {
+//                Log.d(TAG,"track.write called with ${samples.size}")
+//                track.write(samples, 0, samples.size, AudioTrack.WRITE_BLOCKING)
+//                return 1
+//            } else {
+//                track.stop()
+//                return 0
+//            }
+//        }
+    }
+
+    fun stop() {
+        //if(!stopped) track.stop()
     }
 
     fun generate(textStr: String) {
-        Log.d(TAG,"generate called with $textStr")
-        track.pause()
-        track.flush()
-        track.play()
+        //track.pause()
+        //track.flush()
+        //track.play()
         stopped = false
         Thread {
             Log.d(TAG,"generateWithCallback called with $textStr")
@@ -109,7 +120,6 @@ class TTS(private val context: Context) {
                 speed = 1.0f,
                 callback = this::callback
             )
-            Log.d(TAG,"generateWithCallback called with $textStr")
 //            val filename = context.filesDir.absolutePath + "/generated.wav"
 //            val ok = audio.samples.isNotEmpty() && audio.save(filename)
 //            if (ok) {
@@ -169,50 +179,30 @@ class TTS(private val context: Context) {
         }
     }
 
-    private fun initAudioTrack() {
-        val sampleRate = tts.sampleRate()
-        val bufLength = AudioTrack.getMinBufferSize(
-            sampleRate,
-            AudioFormat.CHANNEL_OUT_MONO,
-            AudioFormat.ENCODING_PCM_FLOAT
-        )
-        Log.i(TAG, "sampleRate: $sampleRate, buffLength: $bufLength")
-
-        val attr = AudioAttributes.Builder().setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
-            .setUsage(AudioAttributes.USAGE_MEDIA)
-            .build()
-
-        val format = AudioFormat.Builder()
-            .setEncoding(AudioFormat.ENCODING_PCM_FLOAT)
-            .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
-            .setSampleRate(sampleRate)
-            .build()
-
-        track = AudioTrack(
-            attr, format, bufLength, AudioTrack.MODE_STREAM,
-            AudioManager.AUDIO_SESSION_ID_GENERATE
-        )
-        track.play()
-    }
-
-    private fun onClickPlay() {
-        val filename = context.filesDir.absolutePath + "/generated.wav"
-        mediaPlayer?.stop()
-        mediaPlayer = MediaPlayer.create(
-            context,
-            Uri.fromFile(File(filename))
-        )
-        mediaPlayer?.start()
-    }
-
-    private fun onClickStop() {
-        stopped = true
-        track.pause()
-        track.flush()
-        mediaPlayer?.stop()
-        mediaPlayer = null
-    }
-
-
+//    private fun initAudioTrack() {
+//        val sampleRate = tts.sampleRate()
+//        val bufLength = AudioTrack.getMinBufferSize(
+//            sampleRate,
+//            AudioFormat.CHANNEL_OUT_MONO,
+//            AudioFormat.ENCODING_PCM_FLOAT
+//        )
+//        Log.i(TAG, "sampleRate: $sampleRate, buffLength: $bufLength")
+//
+//        val attr = AudioAttributes.Builder().setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+//            .setUsage(AudioAttributes.USAGE_MEDIA)
+//            .build()
+//
+//        val format = AudioFormat.Builder()
+//            .setEncoding(AudioFormat.ENCODING_PCM_FLOAT)
+//            .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
+//            .setSampleRate(sampleRate)
+//            .build()
+//
+//        track = AudioTrack(
+//            attr, format, bufLength, AudioTrack.MODE_STREAM,
+//            AudioManager.AUDIO_SESSION_ID_GENERATE
+//        )
+//        track.play()
+//    }
 
 }

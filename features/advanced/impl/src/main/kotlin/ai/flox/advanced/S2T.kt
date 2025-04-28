@@ -1,7 +1,6 @@
-package ai.flox.chat.data
+package ai.flox.advanced
 
 import ai.flox.asr.Recorder
-import ai.flox.asr.RecorderV2
 import ai.flox.asr.WaveUtil
 import ai.flox.asr.Whisper
 import ai.flox.asr.Whisper.WhisperListener
@@ -10,10 +9,6 @@ import android.content.Context
 import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
@@ -31,7 +26,7 @@ class S2T(context: Context) {
     private val EXTENSIONS_TO_COPY: Array<String> = arrayOf("tflite", "bin", "wav", "pcm")
 
     private var mRecorder: Recorder? = null
-    private var s2tRecorder: S2TAudioRecorder? = null
+    var s2tRecorder: S2TAudioRecorder? = null
     private var mWhisper: Whisper? = null
 
     private var sdcardDataFolder: File? = null
@@ -185,29 +180,29 @@ class S2T(context: Context) {
             lastProcessedTimestamp = System.currentTimeMillis() // Resetting the timestamp
             streamingStartTime = System.currentTimeMillis()
             // onDataReceived to handle buffering and processing audio data
-            val onDataReceived = object : RecorderV2.AudioDataReceivedListener {
-                override fun onAudioDataReceived(data: FloatArray) {
-                    // Add incoming data to the buffer
-//                    audioBuffer.addAll(data.toList())
-                    if (!audioState.isCapturing) {
-                        Log.d(TAG, "Not capturing, ignoring audio")
-                        return
-                    }
-                    if (audioState.nSamples + data.size > MAX_AUDIO_SEC * SAMPLE_RATE) {
-                        Log.d(TAG, "Too much audio data, ignoring")
-                        _isStreaming.postValue(false)
-//                        toggleStream()
-                        //empty the buffer
-                        audioState.audioBufferF32.clear()
-                        audioState.nSamples = 0
-                        return
-                    }
-                    audioState.audioBufferF32.addAll(data.toList())
-                    audioState.nSamples += data.size
-                    // Process the buffer in chunks
-                    processBufferedAudioChunks()
-                }
-            }
+//            val onDataReceived = object : RecorderV2.AudioDataReceivedListener {
+//                override fun onAudioDataReceived(data: FloatArray) {
+//                    // Add incoming data to the buffer
+////                    audioBuffer.addAll(data.toList())
+//                    if (!audioState.isCapturing) {
+//                        Log.d(TAG, "Not capturing, ignoring audio")
+//                        return
+//                    }
+//                    if (audioState.nSamples + data.size > MAX_AUDIO_SEC * SAMPLE_RATE) {
+//                        Log.d(TAG, "Too much audio data, ignoring")
+//                        _isStreaming.postValue(false)
+////                        toggleStream()
+//                        //empty the buffer
+//                        audioState.audioBufferF32.clear()
+//                        audioState.nSamples = 0
+//                        return
+//                    }
+//                    audioState.audioBufferF32.addAll(data.toList())
+//                    audioState.nSamples += data.size
+//                    // Process the buffer in chunks
+//                    processBufferedAudioChunks()
+//                }
+//            }
 
             mWhisper?.setListener(listener)
 
@@ -221,50 +216,52 @@ class S2T(context: Context) {
         } else {
             _isStreaming.postValue(false)
             //recorder.stopRecording()
+            s2tRecorder?.stop()
             s2tRecorder?.reset(false)
             Log.i(TAG, "Streaming is already active.")
         }
     }
-    private fun processBufferedAudioChunks() {
-        if (audioState.isTranscribing) {
-            return
-        }
-        CoroutineScope(Dispatchers.IO).launch {
-            try {
-                audioState.isTranscribing = true
-                while (audioState.audioBufferF32.size >= chunkSize) {
-                    val processingStartTime = System.currentTimeMillis()
-                    val chunkToProcess = audioState.audioBufferF32.take(chunkSize).toFloatArray()
 
-                    val textChunk = mWhisper?.transcribeBuffer(chunkToProcess) ?: ""
-                    Log.i(TAG, "Audio Chunk = ${chunkToProcess.toList()}")
-                    val processingEndTime = System.currentTimeMillis()
-                    totalProcessingTime += (processingEndTime - processingStartTime)
-
-                    withContext(Dispatchers.Main) {
-                        val currentText = _transcriptionText.value ?: ""
-                        _transcriptionText.value = currentText + textChunk
-                        val recordingTime = (System.currentTimeMillis() - streamingStartTime) / 1000.0
-                        val cumulativeProcessingTime = totalProcessingTime / 1000.0
-                        val realTimeFactor = cumulativeProcessingTime / recordingTime
-                        val timeInfo = "Recording time: ${"%.3f".format(recordingTime)} s, " +
-                                "Processing time: ${"%.3f".format(cumulativeProcessingTime)} s, " +
-                                "Real-time factor: ${"%.3f".format(realTimeFactor)}"
-                        Log.i(TAG,"$timeInfo")
-                        _processingTimeMessage.value = timeInfo
-                        Log.i(TAG, "Final Text: ${_transcriptionText.value}")
-                    }
-                    audioState.audioBufferF32 = audioState.audioBufferF32.drop(chunkSize).toMutableList()
-//                        lastProcessedTimestamp = currentTimestamp // Update the last processed timestamp
-
-//                    audioBuffer = audioBuffer.drop(chunkSize).toMutableList()
-                }
-                audioState.isTranscribing = false
-            } catch (e: Exception) {
-                Log.e(TAG, "Error during buffer processing: ${e.localizedMessage}", e)
-            }
-        }
-    }
+//    private fun processBufferedAudioChunks() {
+//        if (audioState.isTranscribing) {
+//            return
+//        }
+//        CoroutineScope(Dispatchers.IO).launch {
+//            try {
+//                audioState.isTranscribing = true
+//                while (audioState.audioBufferF32.size >= chunkSize) {
+//                    val processingStartTime = System.currentTimeMillis()
+//                    val chunkToProcess = audioState.audioBufferF32.take(chunkSize).toFloatArray()
+//
+//                    val textChunk = mWhisper?.transcribeBuffer(chunkToProcess) ?: ""
+//                    Log.i(TAG, "Audio Chunk = ${chunkToProcess.toList()}")
+//                    val processingEndTime = System.currentTimeMillis()
+//                    totalProcessingTime += (processingEndTime - processingStartTime)
+//
+//                    withContext(Dispatchers.Main) {
+//                        val currentText = _transcriptionText.value ?: ""
+//                        _transcriptionText.value = currentText + textChunk
+//                        val recordingTime = (System.currentTimeMillis() - streamingStartTime) / 1000.0
+//                        val cumulativeProcessingTime = totalProcessingTime / 1000.0
+//                        val realTimeFactor = cumulativeProcessingTime / recordingTime
+//                        val timeInfo = "Recording time: ${"%.3f".format(recordingTime)} s, " +
+//                                "Processing time: ${"%.3f".format(cumulativeProcessingTime)} s, " +
+//                                "Real-time factor: ${"%.3f".format(realTimeFactor)}"
+//                        Log.i(TAG,"$timeInfo")
+//                        _processingTimeMessage.value = timeInfo
+//                        Log.i(TAG, "Final Text: ${_transcriptionText.value}")
+//                    }
+//                    audioState.audioBufferF32 = audioState.audioBufferF32.drop(chunkSize).toMutableList()
+////                        lastProcessedTimestamp = currentTimestamp // Update the last processed timestamp
+//
+////                    audioBuffer = audioBuffer.drop(chunkSize).toMutableList()
+//                }
+//                audioState.isTranscribing = false
+//            } catch (e: Exception) {
+//                Log.e(TAG, "Error during buffer processing: ${e.localizedMessage}", e)
+//            }
+//        }
+//    }
 
 
 
@@ -301,5 +298,35 @@ class S2T(context: Context) {
         } catch (e: IOException) {
             e.printStackTrace()
         }
+    }
+}
+
+class SharedResource {
+    // Synchronized method for Thread 1 to wait for a signal with a timeout
+    @Synchronized
+    fun waitForSignalWithTimeout(timeoutMillis: Long): Boolean {
+        val startTime = System.currentTimeMillis()
+
+        try {
+            (this as Object).wait(timeoutMillis) // Wait for the given timeout
+        } catch (e: InterruptedException) {
+            Thread.currentThread().interrupt() // Restore interrupt status
+            return false // Thread interruption as timeout
+        }
+
+        val elapsedTime = System.currentTimeMillis() - startTime
+
+        // Check if wait returned due to notify or timeout
+        return if (elapsedTime < timeoutMillis) {
+            true // Returned due to notify
+        } else {
+            false // Returned due to timeout
+        }
+    }
+
+    // Synchronized method for Thread 2 to send a signal
+    @Synchronized
+    fun sendSignal() {
+        (this as Object).notify() // Notifies the waiting thread
     }
 }
