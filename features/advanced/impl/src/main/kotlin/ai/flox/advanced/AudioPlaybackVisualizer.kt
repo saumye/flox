@@ -81,9 +81,6 @@ class AudioPlaybackVisualizer(
 
         // Update timestamp for next calculation
         lastTimestamp = currentTime
-
-        Log.d("AudioPlaybackVisualizer", "Time-based position: $visualizationPosition, " +
-                "AudioTrack position: $playbackPosition, audioData.size: ${audioData.size}")
     }
 
     fun stop() {
@@ -94,8 +91,6 @@ class AudioPlaybackVisualizer(
     private fun updateVisualization() {
         // Use our time-based position instead of AudioTrack's position
         val startSample = visualizationPosition
-
-        Log.d("AudioPlaybackVisualizer", "Visualization at position: $startSample/${audioData.size}")
 
         // Ensure we don't exceed array bounds
         if (startSample >= audioData.size) {

@@ -1,16 +1,6 @@
 package ai.liv.s2tlibrary;
 
 
-import android.content.Context;
-import android.media.AudioRecord;
-
-import android.util.Log;
-
-import java.io.File;
-import java.nio.ByteBuffer;
-
-import static ai.liv.s2tlibrary.S2TConstants.LOG_TAG;
-
 /**
  * Created by saumyesrivastava on 06/09/17.
  */

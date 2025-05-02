@@ -61,7 +61,7 @@ class Vad(
     fun isSpeechDetected(): Boolean {
         val ret = isSpeechDetected(ptr)
         if(!ret) count++ else count = 0
-        return count < 5
+        return count < 10
     }
 
     fun reset() {

@@ -1,522 +1,393 @@
-package ai.liv.s2tlibrary;
-
-import android.Manifest;
-import android.content.Context;
-import android.content.pm.PackageManager;
-import android.media.AudioFormat;
-import android.media.AudioRecord;
-import android.media.MediaRecorder;
-import android.os.AsyncTask;
-import android.os.Process;
-import android.util.Log;
-import java.nio.BufferOverflowException;
-import java.nio.FloatBuffer;
-import java.nio.ReadOnlyBufferException;
-import java.util.Arrays;
-
-import static ai.liv.s2tlibrary.S2TConstants.LOG_TAG;
-import static ai.liv.s2tlibrary.S2TConstants.PREF_TIMER_INTERVAL_VAL;
-import static ai.liv.s2tlibrary.S2TConstants.State;
-import static com.k2fsa.sherpa.onnx.VadKt.getVadModelConfig;
-import static android.os.Process.THREAD_PRIORITY_BACKGROUND;
-
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import androidx.core.app.ActivityCompat;
-
-import com.k2fsa.sherpa.onnx.Vad;
-
-import ai.flox.asr.Whisper;
-
-public class S2TAudioRecorder {
-
-    public Boolean should_stop;
-
-    private boolean sendTranscription = true;
-
-    private boolean oneRun;
-
-    private Vad vad;
-
-    private static final String TAG = "S2TAudioRecorder";
-    private static final String ISSUE_TAG = "IssueTag";
-
-    private final static int[] sampleRates = {16000,8000};
-
-
-    // The interval (in millisec) in which the recorded samples are output to the file
-    private int listenerTimerInterval = 500;
-
-    private int numFramesInASecond;
-
-    // The interval (in millisec) in which recording must be split and sent to server
-    private int splitAudioDurationInMillis ;
-
-    private int timerInterval;
-
-    // Audio Recorder instance
-    private AudioRecord audioRecorder;
-
-    private boolean vadOn = true;
-
-    private boolean splitFlag = true;
-
-    private State state;
-
-    // Current recording index
-    private int rec_idx;
-
-    // Number of channels, sample rate, sample size(size in bits), buffer size, audio source, sample size(see AudioFormat)
-    private short nChannels;
-    private int sRate;
-    private short bSamples;
-    private int bufferSize;
-    private int aSource;
-    private int aFormat;
-
-    // Number of frames written to file on each output(only in uncompressed mode)
-    private int framePeriod;
-
-    // Buffer for output(only in uncompressed mode)
-    private float[] buffer;
-
-    public boolean speechDetected = true;
-
-    // ByteBuffer storing recorded bytes for TIMER_INTERVAL+EXTRA_TIMER_INTERVAL
-    private FloatBuffer fileBuffer;
-
-    // Number of times bytes have been transferred from buffer to ByteBuffer
-    private int readDataCount;
-
-    private Context mContext;
-
-    private Whisper mWhisper;
-
-    private int initializationRetryCount = 0;
-
-    private static final int MAX_INITIALIZATION_RETRY = 3;
-
-    //==============================================================================================
-    // Audio Recorder instantiation
-    //==============================================================================================
-
-    @Nullable
-    public static S2TAudioRecorder getInstance(Context c, Whisper whisper)
-    {
-
-        S2TAudioRecorder recorder;
-        int i=0;
-        do
-        {
-            recorder = new S2TAudioRecorder(c, MediaRecorder.AudioSource.MIC, sampleRates[i], AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_FLOAT, whisper);
-        } while((++i<sampleRates.length) & !(recorder.state == State.INITIALIZING));
-
-        return recorder;
-    }
-
-    /**
-     *
-     *
-     * Default constructor
-     *
-     * Instantiates a new recorder, in case of compressed recording the parameters can be left as 0.
-     * In case of errors, no exception is thrown, but the state is set to ERROR
-     *
-     */
-    S2TAudioRecorder(Context c, int audioSource, int sampleRate, int channelConfig, int audioFormat, Whisper whisper)
-    {
-        mContext = c;
-        mWhisper = whisper;
-
-        timerInterval = S2TUtils.getFromSharedPref(mContext, S2TConstants.PREF_TIMER_INTERVAL, PREF_TIMER_INTERVAL_VAL);
-        try
-        {
-            bSamples = 32;
-            nChannels = 1;
-            aSource = audioSource;
-            sRate   = sampleRate;
-            aFormat = audioFormat;
-            numFramesInASecond = 1000/listenerTimerInterval;
-
-            framePeriod = sampleRate * listenerTimerInterval/1000;
-
-            bufferSize = framePeriod * bSamples * nChannels / 8;
-
-            if(splitFlag){
-                splitAudioDurationInMillis =S2TConstants.BREAK_INTERVAL;
-            }
-            else{
-                splitAudioDurationInMillis = timerInterval*1000;
-            }
-
-            int fullBufferSize = bufferSize * ((timerInterval+2) * 1000 / listenerTimerInterval + 1);
-            fileBuffer = FloatBuffer.allocate(fullBufferSize);
-
-            Log.d(TAG,"bufferSize"+bufferSize);
-            if (bufferSize < AudioRecord.getMinBufferSize(sampleRate, channelConfig, audioFormat))
-            {
-                // Check to make sure buffer size is not smaller than the smallest allowed one
-                bufferSize = AudioRecord.getMinBufferSize(sampleRate, channelConfig, audioFormat);
-
-                // Set frame period and timer interval accordingly
-                framePeriod = bufferSize / (bSamples * nChannels / 8 );
-
-            }
-
-            Log.d(TAG,"bufferSize"+bufferSize+","+framePeriod);
-            if (ActivityCompat.checkSelfPermission(mContext, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
-                return;
-            }
-            audioRecorder = new AudioRecord(audioSource, sampleRate, channelConfig, audioFormat, bufferSize*numFramesInASecond*timerInterval);
-
-            if (audioRecorder.getState() != AudioRecord.STATE_INITIALIZED)
-                throw new Exception("AudioRecord initialization failed");
-
-
-            state = State.INITIALIZING;
-            if(vadOn) {
-                vad = new Vad(mContext.getAssets(), getVadModelConfig(0));
-            }
-        } catch (Exception e)
-        {
-            if (e.getMessage() != null)
-            {
-                Log.e(S2TConstants.LOG_TAG, e.getMessage());
-            }
-            else
-            {
-                Log.e(S2TConstants.LOG_TAG, "Unknown error occured while initializing recording");
-            }
-            state = State.ERROR;
-        }
-    }
-
-    /**
-     * Callback triggered after regular intervals to read from audioRecorder to local buffer
-     */
-    @NonNull
-    private AudioRecord.OnRecordPositionUpdateListener updateListener = new AudioRecord.OnRecordPositionUpdateListener()
-    {
-        public void onPeriodicNotification(AudioRecord recorder)
-        {
-            if(sendTranscription) {
-                readDataFromBuffer();
-            }
-        }
-
-        public void onMarkerReached(AudioRecord recorder)
-        {
-            // NOT USED
-        }
-    };
-
-    private synchronized void init() {
-        
-        oneRun = false;
-        rec_idx = 0;
-        readDataCount = 0;
-        audioRecorder.setRecordPositionUpdateListener(updateListener);
-        audioRecorder.setPositionNotificationPeriod(framePeriod);
-        should_stop = false;
-        sendTranscription = true;
-
-    }
-    /**
-     *
-     * Prepares the recorder for recording, in case the recorder is not in the INITIALIZING state and the file path was not set
-     * the recorder is set to the ERROR state, which makes a reconstruction necessary.
-     * In case uncompressed recording is toggled, the header of the wave file is written.
-     * In case of an exception, the state is changed to ERROR
-     *
-     */
-    public void prepare()
-    {
-        try
-        {
-            ++initializationRetryCount;
-
-                if (audioRecorder.getState() == AudioRecord.STATE_INITIALIZED)
-                {
-                    buffer = new float[framePeriod*bSamples/8*nChannels];
-
-                    timerInterval = S2TUtils.getFromSharedPref(mContext, S2TConstants.PREF_TIMER_INTERVAL, PREF_TIMER_INTERVAL_VAL);
-                    if(splitFlag){
-                        splitAudioDurationInMillis = S2TConstants.BREAK_INTERVAL;
-                    }
-                    else{
-                        splitAudioDurationInMillis = timerInterval*1000;
-                    }
-                    int fullBufferSize = bufferSize * ((timerInterval+2) * 1000 / listenerTimerInterval + 1);
-                    fileBuffer = FloatBuffer.allocate(fullBufferSize);
-                    state = State.READY;
-                } else {
-                    if ((audioRecorder.getState() == AudioRecord.STATE_UNINITIALIZED) && (initializationRetryCount < MAX_INITIALIZATION_RETRY)) {
-                        audioRecorder.release();
-                        reset(true);
-                        prepare();
-                    } else {
-                        Log.e(LOG_TAG, "prepare() method called on uninitialized recorder");
-                        state = State.ERROR;
-                    }
-                }
-        }
-        catch(Exception e)
-        {
-            if (e.getMessage() != null)
-            {
-                Log.e(LOG_TAG, e.getMessage());
-            }
-            else
-            {
-                Log.e(LOG_TAG, "Unknown error occured in prepare()");
-            }
-            state = State.ERROR;
-        }
-    }
-
-    /**
-     *
-     *
-     * Starts the recording, and sets the state to RECORDING.
-     * Call after prepare().
-     *
-     */
-    public void start() {
-        if (state == State.READY) {
-            init();
-
-            //Alternating files prefixes to check race condition
-            int fileNamePrefix = S2TUtils.getFromSharedPref(mContext, S2TConstants.FILE_NAME_PREFIX_KEY, 1);
-            if (fileNamePrefix == 1) {
-                S2TUtils.saveToSharedPref(mContext, S2TConstants.FILE_NAME_PREFIX_KEY, 2);
-            } else {
-                S2TUtils.saveToSharedPref(mContext, S2TConstants.FILE_NAME_PREFIX_KEY, 1);
-            }
-
-            audioRecorder.startRecording();
-            readDataFromBuffer();
-            state = State.RECORDING;
-        } else {
-            Log.e(LOG_TAG, "start() called on illegal state");
-            state = State.ERROR;
-        }
-    }
-
-    /**
-     *
-     *
-     *  Stops the recording, and sets the state to STOPPED.
-     * In case of further usage, a reset is needed.
-     * Also finalizes the wave file in case of uncompressed recording.
-     *
-     */
-    public void stop()
-    {
-        if (state == State.RECORDING) {
-            try{
-                audioRecorder.stop();
-                audioRecorder.release();
-            }catch (Exception e){
-                Log.e(LOG_TAG, "Exception while releasing audioRecorder");
-            }
-            
-            audioRecorder.setRecordPositionUpdateListener(null);
-            should_stop = true;
-            readDataFromBuffer();
-            state = State.STOPPED;
-        }
-        else {
-            Log.e(LOG_TAG, "stop() called on illegal state "+state);
-        }
-    }
-
-    /**
-     *
-     *
-     *  Releases the resources associated with this class, and removes the unnecessary files, when necessary
-     *
-     */
-    public void release()
-    {
-        //Log.v(TAG, "Stopping rec");
-        if (state == State.RECORDING) {
-            stop();
-        }
-
-        if (audioRecorder != null) {
-            audioRecorder.release();
-        }
-    }
-
-    /**
-     *
-     *
-     * Resets the recorder to the INITIALIZING state, as if it was just created.
-     * In case the class was in RECORDING state, the recording is stopped.
-     * In case of exceptions the class is set to the ERROR state.
-     *
-     */
-    public void reset(boolean sendTranscription)
-    {
-        try
-        {
-            if (state != State.ERROR)
-            {
-                this.sendTranscription = sendTranscription;
-                release();
-                if (ActivityCompat.checkSelfPermission(mContext, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
-                    return;
-                }
-                audioRecorder = new AudioRecord(aSource, sRate, nChannels+1, aFormat, bufferSize*numFramesInASecond);
-                state = State.INITIALIZING;
-            }
-        }
-        catch (Exception e)
-        {
-            Log.e(LOG_TAG, e.getMessage());
-            state = State.ERROR;
-        }
-    }
-
-    
-
-
-    //==============================================================================================
-    // Buffer Read and write methods
-    //==============================================================================================
-    private synchronized void readDataFromBuffer() {
-        if (oneRun) {
-            return;
-        }
-        audioRecorder.read(buffer, 0, buffer.length, AudioRecord.READ_NON_BLOCKING); // Fill buffer
-        try{
-            fileBuffer.put(buffer);
-        }catch (@NonNull BufferOverflowException | ReadOnlyBufferException ex){
-            return;
-        }
-
-        readDataCount++;
-
-        if(vadOn && rec_idx >= 1) {
-            vad.acceptWaveform(buffer);
-            speechDetected = vad.isSpeechDetected();
-            vad.clear();
-            Log.d(TAG,"VAD Speech Detected: "+speechDetected);
-            if (!speechDetected) {
-                should_stop = true;
-            }
-        }
-
-        // Log.d(TAG,"fileBuffer.put end:"+System.currentTimeMillis());
-        if (should_stop || readDataCount >= splitAudioDurationInMillis/listenerTimerInterval) {//
-
-            rec_idx++;
-
-            if (timerInterval*1000 - splitAudioDurationInMillis*rec_idx <= 0) {
-                should_stop = true;
-            }
-
-            if(sendTranscription) {
-
-                int start = 0, end = fileBuffer.position();
-
-                //Just to get 4 frame data
-                int sizeOfBuffer = bufferSize*(splitAudioDurationInMillis/listenerTimerInterval);
-
-                Log.d(TAG,"fileBuffer.position():"+fileBuffer.position()+", sizeofBuffer:"+sizeOfBuffer);
-                if(fileBuffer.position() >=  sizeOfBuffer) {
-                    if (splitFlag) {
-                        start = (rec_idx - 1) * (sizeOfBuffer);
-                        if (!should_stop) {
-                            end = ((rec_idx) * (sizeOfBuffer));
-                        }
-                    }
-                    new ReadBufferTask(rec_idx).execute(0,end);
-                }else {
-                    // ErrorHelper.getInstance().sendError(S2TError.ERROR_IN_AUDIO);
-                }
-            }
-            readDataCount = 0;
-            if (should_stop) {
-                oneRun = true;
-                if(vadOn) {
-                    vad.reset();
-                }
-            }
-        }
-    }
-
-
-    //==============================================================================================
-    // Local Utilities
-    //==============================================================================================
-//
-//    private class FFTTask extends AsyncTask<Void, Void, Void> {
-//        float[] samples;
-//        FFTTask(float[] samples) {
-//            super();
-//            this.samples = samples;
-//        }
-//
-//        @Nullable
-//        @Override
-//        protected Void doInBackground(Void... params) {
-//
-//            Process.setThreadPriority(THREAD_PRIORITY_BACKGROUND);
-//            vad.acceptWaveform(samples);
-//            boolean speechDetected = vad.isSpeechDetected();
-//            vad.clear();
-//            Log.d(TAG,"VAD Speech Detected: "+speechDetected);
-//            if (!speechDetected) {
-//                should_stop = true;
-//            }
-//
-//            return null;
-//        }
-//
-//    }
-
-    private class ReadBufferTask extends AsyncTask<Integer, Void, Void> {
-        int r_idx;
-        public ReadBufferTask(int id) {
-            super();
-            r_idx = id;
-        }
-
-        @Nullable
-        @Override
-        protected Void doInBackground(Integer... params) {
-
-            Process.setThreadPriority(THREAD_PRIORITY_BACKGROUND);
-            int start = params[0];
-            int end = params[1];
-
-            final float[] array = fileBuffer.array();
-
-            //Method1
-            final int arrayOffset = fileBuffer.arrayOffset();
-            float[] temp = Arrays.copyOfRange(array, arrayOffset+start, arrayOffset+end);
-            Log.v(TAG,"temp:"+Arrays.toString(temp));
-
-            //fileBuffer.clear();       TODO
-
-            if(should_stop) {
-                try{
-                    mWhisper.transcribeBuffer(temp);
-                    publishProgress();
-                }
-                catch (Exception e){
-                    e.printStackTrace();
-                }
-            }
-            return null;
-        }
-
-        @Override
-        protected void onProgressUpdate(Void... values) {
-            super.onProgressUpdate(values);
-        }
-    }
+package ai.liv.s2tlibrary
+
+import android.Manifest
+import android.annotation.SuppressLint
+import android.content.Context
+import android.content.pm.PackageManager
+import android.media.AudioFormat
+import android.media.AudioRecord
+import android.media.MediaRecorder
+import android.os.Process
+import android.util.Log
+import androidx.core.app.ActivityCompat
+import com.k2fsa.sherpa.onnx.Vad
+import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.*
+import java.util.concurrent.Executors
+import kotlin.math.ceil
+import java.util.concurrent.atomic.AtomicBoolean
+
+// Configuration data class
+data class AudioRecorderConfig(
+    val audioSource: Int = MediaRecorder.AudioSource.MIC,
+    val sampleRate: Int = 16000,
+    val channelConfig: Int = AudioFormat.CHANNEL_IN_MONO,
+    val audioFormat: Int = AudioFormat.ENCODING_PCM_FLOAT,
+    // Base read buffer size - determines the smallest chunk read from AudioRecord.
+    // Listener interval should ideally be >= this value.
+    val readBufferSizeMs: Int = 50, // e.g., read 50ms chunks minimum
+    // Target intervals for different consumers
+    val listenerTimerIntervalMs: Int = 50, // Target interval for listener updates
+    val vadTimerIntervalMs: Int = 500,    // Target interval for VAD updates
+    val whisperTimerIntervalMs: Int = 2500 // Target interval for Whisper updates
+)
+
+// Sealed class for representing recorder state
+sealed class RecorderState {
+    object Idle : RecorderState()
+    object Preparing : RecorderState()
+    object Ready : RecorderState()
+    object Recording : RecorderState()
+    object Stopping : RecorderState()
+    data class Error(val exception: Exception) : RecorderState()
 }
 
+class S2TAudioRecorder(
+    private val context: Context,
+    private val config: AudioRecorderConfig = AudioRecorderConfig(),
+    private val vad: Vad? = null // Accept optional Vad instance
+) {
+    private val TAG = "S2TAudioRecorder"
 
+    // Coroutine Dispatchers
+    private val recordingDispatcher: CoroutineDispatcher =
+        Executors.newSingleThreadExecutor().asCoroutineDispatcher()
+    private val processingDispatcher: CoroutineDispatcher =
+        Executors.newSingleThreadExecutor().asCoroutineDispatcher()
+
+    // Main scope
+    private val recorderScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+
+    private var audioRecord: AudioRecord? = null
+    private var processingJob: Job? = null
+    
+    // For managing state transitions
+    private val _state = MutableStateFlow<RecorderState>(RecorderState.Idle)
+    val state: StateFlow<RecorderState> = _state.asStateFlow()
+
+    // StateFlow for VAD status
+    private val _isSpeechDetected = MutableStateFlow<Boolean>(false)
+    val isSpeechDetected: StateFlow<Boolean> = _isSpeechDetected.asStateFlow()
+
+    // --- Shared flows for different data consumers ---
+    private val _listenerAudioData = MutableSharedFlow<FloatArray>(replay = 0, extraBufferCapacity = 64)
+    val listenerAudioData: SharedFlow<FloatArray> = _listenerAudioData.asSharedFlow()
+    private val _whisperAudioData = MutableSharedFlow<FloatArray>(replay = 0, extraBufferCapacity = 8)
+    val whisperAudioData: SharedFlow<FloatArray> = _whisperAudioData.asSharedFlow()
+
+    // --- Buffer size calculations ---
+    // Frame period = number of samples in one notification period
+    private val bytesPerFloat = 4 // For ENCODING_PCM_FLOAT
+    private val framePeriod = (config.sampleRate * config.listenerTimerIntervalMs / 1000).toInt()
+    private val bufferSize = framePeriod * bytesPerFloat
+    private val readBuffer = FloatArray(framePeriod)
+    
+    // Buffers to accumulate data for different intervals
+    private val listenerBuffer = mutableListOf<FloatArray>()
+    private val whisperBuffer = mutableListOf<FloatArray>()
+    
+    // Counters for tracking periodic data emission
+    private var readDataCount = 0
+    private var vadReadDataCount = 0
+    
+    // Flag to prevent multiple simultaneous read operations
+    private var isReading = AtomicBoolean(false)
+    
+    // Flag to indicate if we should stop
+    private var shouldStop = AtomicBoolean(false)
+    
+    init {
+        Log.d(TAG, "VAD integration enabled: ${vad != null}")
+        Log.d(TAG, "Configured Frame Period: $framePeriod samples")
+        Log.d(TAG, "Configured Buffer Size: $bufferSize bytes")
+        Log.d(TAG, "Intervals: Listener=${config.listenerTimerIntervalMs}ms, VAD=${config.vadTimerIntervalMs}ms, Whisper=${config.whisperTimerIntervalMs}ms")
+    }
+
+    /**
+     * Update listener that is triggered at each notification period
+     */
+    private val updateListener = object : AudioRecord.OnRecordPositionUpdateListener {
+        override fun onPeriodicNotification(recorder: AudioRecord) {
+            readDataFromBuffer()
+        }
+
+        override fun onMarkerReached(recorder: AudioRecord) {
+            // Not used
+        }
+    }
+    
+    /**
+     * Reads data from AudioRecord buffer and processes it
+     */
+    private fun   readDataFromBuffer() {
+        if (isReading.getAndSet(true)) {
+            return  // Another read is in progress
+        }
+        
+        try {
+            val recorder = audioRecord ?: return
+            
+            // Read from AudioRecord - this should always return exactly framePeriod samples
+            // because the notification is precisely timed
+            val readResult = recorder.read(readBuffer, 0, readBuffer.size, AudioRecord.READ_NON_BLOCKING)
+            
+            if (readResult < 0) {
+                Log.e(TAG, "AudioRecord read error: $readResult")
+                _state.value = RecorderState.Error(RuntimeException("AudioRecord read error: $readResult"))
+                return
+            }
+            
+            if (readResult > 0) {
+                // Create a copy of the buffer to avoid mutation issues
+                val currentChunk = readBuffer.copyOf()
+                
+                // --- VAD Processing ---
+                vadReadDataCount++
+                if (vadReadDataCount >= config.vadTimerIntervalMs / config.listenerTimerIntervalMs) {
+                    vad?.let {
+                        it.acceptWaveform(currentChunk)
+                        val currentlySpeaking = it.isSpeechDetected()
+                        if (currentlySpeaking != _isSpeechDetected.value) {
+                            Log.d(TAG, "VAD state changed: $currentlySpeaking")
+                            _isSpeechDetected.value = currentlySpeaking
+                        }
+                    }
+                    vadReadDataCount = 0
+                }
+                
+                // --- Data Accumulation ---
+                // Send immediate update to listener flow
+                recorderScope.launch {
+                    _listenerAudioData.emit(currentChunk)
+                }
+                
+                // Add to whisper buffer for larger chunks
+                whisperBuffer.add(currentChunk)
+                readDataCount++
+                
+                // Emit Whisper Buffer when enough data is collected
+                if (readDataCount >= config.whisperTimerIntervalMs / config.listenerTimerIntervalMs || shouldStop.get()) {
+                    if (whisperBuffer.isNotEmpty()) {
+                        val combined = combineChunks(whisperBuffer)
+                        recorderScope.launch {
+                            _whisperAudioData.emit(combined)
+                            Log.d(TAG, "Emitted whisper buffer: ${combined.size} samples")
+                        }
+                        whisperBuffer.clear()
+                    }
+                    readDataCount = 0
+                    
+                    if (shouldStop.get()) {
+                        stop()
+                    }
+                }
+            } else {
+                Log.w(TAG, "Read 0 samples from AudioRecord")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error reading from AudioRecord", e)
+            _state.value = RecorderState.Error(e)
+        } finally {
+            isReading.set(false)
+        }
+    }
+
+    suspend fun prepare() {
+        if (_state.value !is RecorderState.Idle && _state.value !is RecorderState.Error) {
+            Log.w(TAG, "Prepare called on invalid state: ${_state.value}")
+            return
+        }
+        
+        _state.value = RecorderState.Preparing
+        _isSpeechDetected.value = false
+        vad?.reset()
+        
+        withContext(Dispatchers.IO) {
+            try {
+                if (ActivityCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+                    throw SecurityException("RECORD_AUDIO permission not granted")
+                }
+                
+                val minBufferSize = AudioRecord.getMinBufferSize(
+                    config.sampleRate,
+                    config.channelConfig,
+                    config.audioFormat
+                )
+                
+                // Calculate a good internal buffer size (at least 1 second of audio)
+                val internalBufferSize = maxOf(
+                    minBufferSize,
+                    config.sampleRate * bytesPerFloat * 1 // 1 second buffer
+                )
+                
+                Log.d(TAG, "Min buffer size: $minBufferSize bytes")
+                Log.d(TAG, "Internal buffer size: $internalBufferSize bytes")
+                
+                audioRecord?.release()
+                
+                @SuppressLint("MissingPermission")
+                val recorder = AudioRecord(
+                    config.audioSource,
+                    config.sampleRate,
+                    config.channelConfig,
+                    config.audioFormat,
+                    internalBufferSize
+                )
+                
+                if (recorder.state != AudioRecord.STATE_INITIALIZED) {
+                    throw IllegalStateException("AudioRecord initialization failed: ${recorder.state}")
+                }
+                
+                audioRecord = recorder
+                
+                // Reset counters and buffers
+                readDataCount = 0
+                vadReadDataCount = 0
+                whisperBuffer.clear()
+                shouldStop.set(false)
+                
+                _state.value = RecorderState.Ready
+                Log.i(TAG, "AudioRecord prepared successfully")
+                
+            } catch (e: Exception) {
+                Log.e(TAG, "Error preparing AudioRecord", e)
+                audioRecord?.release()
+                audioRecord = null
+                _state.value = RecorderState.Error(e)
+            }
+        }
+    }
+
+    fun start() {
+        if (_state.value != RecorderState.Ready) {
+            Log.e(TAG, "Start called on invalid state: ${_state.value}")
+            if (_state.value != RecorderState.Recording) {
+                _state.value = RecorderState.Error(IllegalStateException("Start called on invalid state: ${_state.value}"))
+            }
+            return
+        }
+        
+        val recorder = audioRecord
+        if (recorder == null) {
+            _state.value = RecorderState.Error(IllegalStateException("AudioRecord not initialized. Call prepare() first."))
+            return
+        }
+        
+        try {
+            // Set the notification period
+            recorder.setRecordPositionUpdateListener(updateListener)
+            recorder.positionNotificationPeriod = framePeriod
+            
+            // Initialize state
+            readDataCount = 0
+            vadReadDataCount = 0
+            whisperBuffer.clear()
+            shouldStop.set(false)
+            
+            // Start recording
+            recorder.startRecording()
+            _state.value = RecorderState.Recording
+            Log.i(TAG, "Recording started with position notification every $framePeriod samples")
+            
+            // Trigger first read to start the process
+            readDataFromBuffer()
+            
+        } catch (e: Exception) {
+            Log.e(TAG, "Error starting AudioRecord", e)
+            _state.value = RecorderState.Error(e)
+        }
+    }
+
+    fun stop() {
+        if (_state.value != RecorderState.Recording && _state.value != RecorderState.Stopping) {
+            Log.w(TAG, "Stop called on non-recording/stopping state: ${_state.value}")
+            if (_state.value == RecorderState.Idle || _state.value == RecorderState.Ready) return
+        }
+        
+        if (_state.value == RecorderState.Stopping) {
+            Log.d(TAG, "Stop called while already stopping.")
+            return
+        }
+        
+        _state.value = RecorderState.Stopping
+        Log.i(TAG, "Stopping recording...")
+        
+        try {
+            val recorder = audioRecord ?: return
+            
+            // Signal for stopping
+            shouldStop.set(true)
+            
+            // Remove listener
+            recorder.setRecordPositionUpdateListener(null)
+            
+            // Stop recording
+            if (recorder.recordingState == AudioRecord.RECORDSTATE_RECORDING) {
+                recorder.stop()
+            }
+            
+            // Emit any remaining data
+            if (whisperBuffer.isNotEmpty()) {
+                val combined = combineChunks(whisperBuffer)
+                recorderScope.launch {
+                    _whisperAudioData.emit(combined)
+                    Log.d(TAG, "Emitted final whisper buffer: ${combined.size} samples")
+                    
+                    // Update state after final emission
+                    _state.value = RecorderState.Ready
+                    _isSpeechDetected.value = false
+                }
+                whisperBuffer.clear()
+            } else {
+                // Update state immediately if no data to emit
+                _state.value = RecorderState.Ready
+                _isSpeechDetected.value = false
+            }
+            
+        } catch (e: Exception) {
+            Log.e(TAG, "Error stopping AudioRecord", e)
+            _state.value = RecorderState.Error(e)
+        }
+    }
+
+    fun release() {
+        Log.i(TAG, "Releasing S2TAudioRecorder resources.")
+        
+        // Ensure recording is stopped
+        if (_state.value == RecorderState.Recording || _state.value == RecorderState.Stopping) {
+            stop()
+        }
+        
+        // Cancel the scope
+        recorderScope.cancel("Releasing S2TAudioRecorder")
+        
+        // Release the AudioRecord
+        try {
+            audioRecord?.release()
+            Log.d(TAG, "AudioRecord released.")
+        } catch (e: Exception) {
+            Log.e(TAG, "Exception during AudioRecord release", e)
+        }
+        
+        audioRecord = null
+        _state.value = RecorderState.Idle
+        
+        // Release VAD
+        vad?.release()
+        
+        Log.i(TAG, "S2TAudioRecorder released.")
+    }
+
+    // Helper function to combine list of FloatArrays
+    private fun combineChunks(chunks: List<FloatArray>): FloatArray {
+        if (chunks.isEmpty()) return FloatArray(0)
+        val totalSize = chunks.sumOf { it.size }
+        val result = FloatArray(totalSize)
+        var offset = 0
+        for (chunk in chunks) {
+            System.arraycopy(chunk, 0, result, offset, chunk.size)
+            offset += chunk.size
+        }
+        return result
+    }
+}

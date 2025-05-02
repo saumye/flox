@@ -2,6 +2,7 @@ package ai.flox.arch
 
 import ai.flox.state.Action
 import ai.flox.state.State
+import android.util.Log
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -9,54 +10,47 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 internal class MutableStateFlowStore<S : State, A : Action> private constructor(
     override val state: StateFlow<S>,
     private val sendFn: (List<A>) -> Unit,
 ) : Store<S, A> {
 
-//    override fun <ViewState: S, ViewAction : A> view(
-//        mapToLocalState: (State) -> ViewState,
-//        mapToGlobalAction: (ViewAction) -> A?,
-//    ): Store<ViewState, ViewAction> = MutableStateFlowStore(
-//        state = state.map { mapToLocalState(it) }.distinctUntilChanged(),
-//        sendFn = { actions ->
-//            val globalActions = actions.mapNotNull(mapToGlobalAction)
-//            sendFn(globalActions)
-//        },
-//    )
-
     companion object {
+        private const val TAG = "MutableStateFlowStore"
+
         fun <S : State, A : Action> create(
             initialState: S,
             reducer: Reducer<S, A>
         ): Store<S, A> {
-            val state = MutableStateFlow(initialState)
+            val mutableState = MutableStateFlow(initialState)
             val noEffect = NoEffect
 
             lateinit var send: (List<A>) -> Unit
             send = { actions ->
-                CoroutineScope(Dispatchers.Main).launch(context = Dispatchers.Main) {
+                CoroutineScope(Dispatchers.Main.immediate).launch {
+
                     val result: ReduceResult<S, A> =
-                        actions.fold(ReduceResult(state.value, noEffect)) { accResult, action ->
-                            val (nextState, nextEffect) = reducer.reduce(
-                                accResult.state,
-                                action
-                            )
-                            return@fold ReduceResult(
-                                nextState,
-                                accResult.effect mergeWith nextEffect
+                        actions.fold(ReduceResult(mutableState.value, noEffect)) { accResult, action ->
+                            val oldState = accResult.state
+                            val reduceResult = reducer.reduce(oldState, action)
+                            val newState = reduceResult.state
+
+                            ReduceResult(
+                                newState,
+                                accResult.effect mergeWith reduceResult.effect
                             )
                         }
-
-                    state.value = result.state
-
+                    mutableState.value = result.state
                     result.effect.run()
-                        .onEach { action -> send(listOf(action)) }
-                        .launchIn(CoroutineScope(Dispatchers.Main))
+                        .onEach { action ->
+                            send(listOf(action))
+                        }
+                        .launchIn(CoroutineScope(Dispatchers.Main.immediate))
                 }
             }
-            return MutableStateFlowStore(state, send)
+            return MutableStateFlowStore(mutableState, send)
         }
     }
 

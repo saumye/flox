@@ -13,7 +13,6 @@ import ai.flox.conversation.ConversationNavigator
 import ai.flox.conversation.model.ConversationState
 import ai.flox.state.Action
 import ai.flox.state.State
-import ai.flox.state.map
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
@@ -24,6 +23,10 @@ import dagger.hilt.components.SingletonComponent
 import dagger.multibindings.IntoSet
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import javax.inject.Singleton
 
 @Module
@@ -66,4 +69,13 @@ object NavigationComponent {
     fun provideAdvancedModeRoutes(store: Store<State, Action>): Navigable {
         return AdvancedModeNavigator(store, store.state.map(CoroutineScope(Dispatchers.Main)) { if(it is AppState) it.featureStates[AdvancedModeState.stateKey] as AdvancedModeState else AdvancedModeState() })
     }
+
+    fun <T, M> StateFlow<T>.map(
+        coroutineScope : CoroutineScope,
+        mapper : (value : T) -> M
+    ) : StateFlow<M> = map { mapper(it) }.stateIn(
+        coroutineScope,
+        SharingStarted.Eagerly,
+        mapper(value)
+    )
 }

@@ -91,11 +91,18 @@ object MainModule {
                     PullbackReducer(
                         innerReducer = reducers[AdvancedModeState.stateKey] as Reducer<AdvancedModeState, Action>,
                         mapToChildAction = { action -> action },
-                        mapToChildState = { state -> state.featureStates[AdvancedModeState.stateKey] as AdvancedModeState },
+                        mapToChildState = { state ->
+                            // Get the AdvancedModeState from AppState's featureStates
+                            state.featureStates[AdvancedModeState.stateKey] as AdvancedModeState
+                        },
                         mapToParentAction = { action -> action },
                         mapToParentState = { state, advancedState ->
-                            state.copy(featureStates = state.featureStates.toMutableMap()
-                                .apply { put(AdvancedModeState.stateKey, advancedState) })
+                            // Create a new map to ensure it's a new instance
+                            val newFeatureStates = state.featureStates.toMutableMap()
+                            // Put the new AdvancedModeState
+                            newFeatureStates[AdvancedModeState.stateKey] = advancedState
+                            // Create a new AppState with the new feature states map
+                            state.copy(featureStates = newFeatureStates)
                         },
                     )
                 )

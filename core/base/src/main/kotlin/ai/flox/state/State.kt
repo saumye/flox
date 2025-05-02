@@ -19,6 +19,7 @@ interface Action {
         interface ClickedEvent : UI
         interface DragEvent : UI
         interface LongPressEvent : UI
+        interface InputEvent: UI
     }
 
     data class Navigate(

@@ -1,19 +1,23 @@
 package ai.flox.advanced
 
-import ai.flox.asr.Recorder
-import ai.flox.asr.WaveUtil
 import ai.flox.asr.Whisper
 import ai.flox.asr.Whisper.WhisperListener
+import ai.liv.s2tlibrary.AudioRecorderConfig
+import ai.liv.s2tlibrary.RecorderState
 import ai.liv.s2tlibrary.S2TAudioRecorder
 import android.content.Context
+import android.content.res.AssetManager
 import android.util.Log
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.MutableLiveData
+import com.k2fsa.sherpa.onnx.Vad
+import com.k2fsa.sherpa.onnx.VadModelConfig
+import com.k2fsa.sherpa.onnx.getVadModelConfig
+import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.*
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
 
-class S2T(context: Context) {
+class S2T(private val context: Context) {
 
     private val TAG: String = "S2T"
 
@@ -24,55 +28,28 @@ class S2T(context: Context) {
     private val ENGLISH_ONLY_VOCAB_FILE: String = "filters_vocab_en.bin"
     private val MULTILINGUAL_VOCAB_FILE: String = "filters_vocab_multilingual.bin"
     private val EXTENSIONS_TO_COPY: Array<String> = arrayOf("tflite", "bin", "wav", "pcm")
-
-    private var mRecorder: Recorder? = null
-    var s2tRecorder: S2TAudioRecorder? = null
+    private var s2tRecorder: S2TAudioRecorder? = null
     private var mWhisper: Whisper? = null
+    private var mVad: Vad? = null
+
+    // Expose the listener audio data flow
+    val listenerAudioData: SharedFlow<FloatArray>?
+        get() = s2tRecorder?.listenerAudioData
+
+    // Expose the recorder state flow
+    val recorderStateFlow: StateFlow<RecorderState>?
+        get() = s2tRecorder?.state
+
+    // Expose the VAD state flow
+    val isSpeechDetectedFlow: StateFlow<Boolean>?
+        get() = s2tRecorder?.isSpeechDetected
 
     private var sdcardDataFolder: File? = null
-    private var selectedWaveFile: File? = null
+
+    // Coroutine scope for managing audio collection
+    private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private var audioCollectionJob: Job? = null
     private var selectedTfliteFile: File? = null
-
-    private var startTime: Long = 0
-    private val loopTesting = false
-    private val transcriptionSync = SharedResource()
-
-
-    private val _canTranscribe = MutableLiveData(false)
-    val canTranscribe: LiveData<Boolean> = _canTranscribe
-
-    private val _dataLog = MutableLiveData("")
-    val dataLog: LiveData<String> = _dataLog
-
-    private val _isRecording = MutableLiveData(false)
-    val isRecording: LiveData<Boolean> = _isRecording
-
-    private val _isStreaming = MutableLiveData(false)
-    val isStreaming: LiveData<Boolean> = _isStreaming
-
-    private val _processingTimeMessage = MutableLiveData("")
-    val processingTimeMessage: LiveData<String> = _processingTimeMessage
-
-    private val _transcriptionText = MutableLiveData("")
-    val transcriptionText: LiveData<String> = _transcriptionText
-
-    private var lastProcessedTimestamp: Long = 0 // Keep track of the last processed audio timestamp
-    private val audioState = AudioState()
-    private var MAX_AUDIO_SEC = 30
-    private var SAMPLE_RATE = 16000
-    private var streamingStartTime: Long = 0
-    private var totalProcessingTime: Long = 0
-    //16*1024 * seconds you want for a chunk
-    private val chunkSize = 16*1024/2
-
-    data class AudioState(
-        var isCapturing: Boolean = false,
-        var isTranscribing: Boolean = false,
-        var nSamples: Int = 0,
-        var audioBufferF32: MutableList<Float> = mutableListOf()
-    )
-
-
 
     init {
         // Call the method to copy specific file types from assets to data folder
@@ -81,205 +58,144 @@ class S2T(context: Context) {
 
         // Initialize default model to use
         selectedTfliteFile = File(sdcardDataFolder, DEFAULT_MODEL_TO_USE)
-        selectedWaveFile = File(sdcardDataFolder, "MicInput.wav")
-        // Audio recording functionality
-//        mRecorder = Recorder(context)
-//        mRecorder!!.setListener(object : Recorder.RecorderListener {
-//            override fun onUpdateReceived(message: String) {
-//                Log.d(TAG, "Update is received, Message: $message")
-//
-//                if (message == Recorder.MSG_RECORDING) {
-//
-//                } else if (message == Recorder.MSG_RECORDING_DONE) {
-//
-//                }
-//            }
-//
-//            override fun onDataReceived(samples: FloatArray?) {
-//            //                mWhisper.writeBuffer(samples);
-//            }
-//        })
 
-        val isMultilingualModel = !(selectedTfliteFile!!.name.endsWith(ENGLISH_ONLY_MODEL_EXTENSION))
+        val isMultilingualModel = true//!(selectedTfliteFile!!.name.endsWith(ENGLISH_ONLY_MODEL_EXTENSION))
         val vocabFileName =
             if (isMultilingualModel) MULTILINGUAL_VOCAB_FILE else ENGLISH_ONLY_VOCAB_FILE
         val vocabFile = File(sdcardDataFolder, vocabFileName)
 
-        mWhisper = Whisper(context)
-        mWhisper!!.loadModel(selectedTfliteFile, vocabFile, isMultilingualModel)
-        mWhisper?.setListener(object: WhisperListener {
-            override fun onUpdateReceived(message: String?) {
-                Log.d(TAG, "WhisperListener.onUpdateReceived : $message")
+        try {
+            mWhisper = Whisper(context)
+            // Launch model loading in the scope
+            scope.launch {
+                val sf = selectedTfliteFile
+                val loaded = sf?.let { mWhisper?.loadModel(it, vocabFile, isMultilingualModel) }
+                if (loaded == true) {
+                    Log.i(TAG, "Whisper model loaded successfully.")
+                } else {
+                    Log.e(TAG, "Whisper model failed to load.")
+                }
             }
 
-            override fun onResultReceived(result: String?) {
-                Log.d(TAG, "WhisperListener.onResultReceived : $result")
+            // VAD and Recorder init can proceed, but recorder usage might fail if model load fails
+            val vadConfig = getVadModelConfig(0)
+            if (vadConfig != null) {
+                mVad = Vad(context.assets, vadConfig)
+                Log.d(TAG, "VAD initialized successfully.")
+            } else {
+                Log.e(TAG, "Failed to get VAD model config!")
             }
 
-        })
+            s2tRecorder = S2TAudioRecorder(context = context, vad = mVad)
 
-        s2tRecorder = S2TAudioRecorder.getInstance(context, mWhisper)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error initializing S2T components", e)
+            mVad?.release()
+            s2tRecorder?.release()
+            mWhisper?.release() // Use release now
+        }
     }
 
-    fun isRecording() =  mRecorder?.isInProgress
+    fun startStreaming(listener: WhisperListener? = null) {
+        scope.launch {
+            val recorder = s2tRecorder ?: run {
+                Log.e(TAG, "Recorder not initialized!")
+                return@launch
+            }
 
+            if (recorder.state.value == RecorderState.Recording) {
+                Log.w(TAG, "Streaming already active.")
+                return@launch
+            }
 
-    fun transcribe() {
-        if (mRecorder != null && mRecorder!!.isInProgress) {
-            Log.d(TAG, "Recording is in progress... stopping...")
-            mRecorder!!.stop()
-        }
-        if (!mWhisper!!.isInProgress) {
-            Log.d(TAG, "Start transcription...")
-            mWhisper!!.setFilePath(selectedWaveFile!!.absolutePath)
-            mWhisper!!.setAction(Whisper.ACTION_TRANSCRIBE)
-            mWhisper!!.start()
-
-            // only for loop testing
-            if (loopTesting) {
-                Thread {
-                    for (i in 0..999) {
-                        if (!mWhisper!!.isInProgress){
-                            mWhisper!!.setFilePath(selectedWaveFile!!.absolutePath)
-                            mWhisper!!.setAction(Whisper.ACTION_TRANSCRIBE)
-                            mWhisper!!.start()
+            if (recorder.state.value != RecorderState.Ready) {
+                Log.d(TAG, "Preparing recorder...")
+                recorder.prepare()
+                try {
+                    recorder.state
+                        .filterIsInstance<RecorderState.Ready>()
+                        .take(1)
+                        .first()
+                    Log.d(TAG, "Recorder is Ready.")
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error waiting for recorder to become ready", e)
+                    recorder.state
+                        .filterIsInstance<RecorderState.Error>()
+                        .take(1)
+                        .firstOrNull()?.let { errorState ->
+                            Log.e(TAG, "Recorder preparation failed: ${errorState.exception}")
                         }
-                        else Log.d(TAG, "Whisper is already in progress...!")
-
-                        val wasNotified = transcriptionSync.waitForSignalWithTimeout(15000)
-                        Log.d(
-                            TAG,
-                            if (wasNotified) "Transcription Notified...!" else "Transcription Timeout...!"
-                        )
-                    }
-                }.start()
+                    return@launch
+                }
             }
-        } else {
-            Log.d(TAG, "Whisper is already in progress...!")
-            mWhisper!!.stop()
+
+            Log.d(TAG, "Starting streaming...")
+
+            listener?.let { mWhisper?.setListener(it) }
+
+            audioCollectionJob?.cancel()
+
+            audioCollectionJob = scope.launch {
+                Log.d(TAG, "Starting audio data collection for Whisper...")
+                try {
+                    recorder.whisperAudioData.collect { audioChunk ->
+                        mWhisper?.transcribeBuffer(audioChunk)
+                    }
+                } catch (e: CancellationException) {
+                    Log.i(TAG, "Whisper audio collection job cancelled.")
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error collecting Whisper audio data", e)
+                } finally {
+                    Log.d(TAG, "Whisper audio collection finished.")
+                }
+            }
+
+            recorder.start()
+
+            recorder.state
+                .filterIsInstance<RecorderState.Recording>()
+                .take(1)
+                .firstOrNull()?.let {
+                    Log.i(TAG, "Recorder state confirmed: Recording")
+                }
         }
     }
 
-    // Recording calls
-    fun startRecording() {
-        val waveFile = File(sdcardDataFolder, WaveUtil.RECORDING_FILE)
-        mRecorder!!.setFilePath(waveFile.absolutePath)
-        mRecorder!!.start()
-    }
-
-    fun startStreaming(listener: WhisperListener?) {
-        if (_isStreaming.value != true) {
-            Log.d(TAG, "Starting streaming 2 electric boogaloo...")
-            _isStreaming.value = true
-
-//            audioBuffer.clear()
-            audioState.isCapturing = true
-            audioState.audioBufferF32.clear()
-            audioState.nSamples = 0
-
-            lastProcessedTimestamp = System.currentTimeMillis() // Resetting the timestamp
-            streamingStartTime = System.currentTimeMillis()
-            // onDataReceived to handle buffering and processing audio data
-//            val onDataReceived = object : RecorderV2.AudioDataReceivedListener {
-//                override fun onAudioDataReceived(data: FloatArray) {
-//                    // Add incoming data to the buffer
-////                    audioBuffer.addAll(data.toList())
-//                    if (!audioState.isCapturing) {
-//                        Log.d(TAG, "Not capturing, ignoring audio")
-//                        return
-//                    }
-//                    if (audioState.nSamples + data.size > MAX_AUDIO_SEC * SAMPLE_RATE) {
-//                        Log.d(TAG, "Too much audio data, ignoring")
-//                        _isStreaming.postValue(false)
-////                        toggleStream()
-//                        //empty the buffer
-//                        audioState.audioBufferF32.clear()
-//                        audioState.nSamples = 0
-//                        return
-//                    }
-//                    audioState.audioBufferF32.addAll(data.toList())
-//                    audioState.nSamples += data.size
-//                    // Process the buffer in chunks
-//                    processBufferedAudioChunks()
-//                }
-//            }
-
-            mWhisper?.setListener(listener)
-
-            s2tRecorder?.prepare()
-            s2tRecorder?.start()
-            // Start streaming with the onDataReceived listener
-//            recorder.startStreaming(onDataReceived) { e ->
-//                Log.e(TAG, "Error during streaming: ${e.localizedMessage}", e)
-//                _isStreaming.postValue(false)
-//            }
+    fun stopStreaming() {
+        val recorder = s2tRecorder ?: return
+        if (recorder.state.value != RecorderState.Recording && recorder.state.value != RecorderState.Stopping) {
+            Log.w(TAG, "Stop called but not in Recording state (${recorder.state.value}).")
         } else {
-            _isStreaming.postValue(false)
-            //recorder.stopRecording()
-            s2tRecorder?.stop()
-            s2tRecorder?.reset(false)
-            Log.i(TAG, "Streaming is already active.")
+            Log.d(TAG, "Stopping streaming...")
+            recorder.stop()
+            audioCollectionJob?.cancel()
+            audioCollectionJob = null
         }
     }
 
-//    private fun processBufferedAudioChunks() {
-//        if (audioState.isTranscribing) {
-//            return
-//        }
-//        CoroutineScope(Dispatchers.IO).launch {
-//            try {
-//                audioState.isTranscribing = true
-//                while (audioState.audioBufferF32.size >= chunkSize) {
-//                    val processingStartTime = System.currentTimeMillis()
-//                    val chunkToProcess = audioState.audioBufferF32.take(chunkSize).toFloatArray()
-//
-//                    val textChunk = mWhisper?.transcribeBuffer(chunkToProcess) ?: ""
-//                    Log.i(TAG, "Audio Chunk = ${chunkToProcess.toList()}")
-//                    val processingEndTime = System.currentTimeMillis()
-//                    totalProcessingTime += (processingEndTime - processingStartTime)
-//
-//                    withContext(Dispatchers.Main) {
-//                        val currentText = _transcriptionText.value ?: ""
-//                        _transcriptionText.value = currentText + textChunk
-//                        val recordingTime = (System.currentTimeMillis() - streamingStartTime) / 1000.0
-//                        val cumulativeProcessingTime = totalProcessingTime / 1000.0
-//                        val realTimeFactor = cumulativeProcessingTime / recordingTime
-//                        val timeInfo = "Recording time: ${"%.3f".format(recordingTime)} s, " +
-//                                "Processing time: ${"%.3f".format(cumulativeProcessingTime)} s, " +
-//                                "Real-time factor: ${"%.3f".format(realTimeFactor)}"
-//                        Log.i(TAG,"$timeInfo")
-//                        _processingTimeMessage.value = timeInfo
-//                        Log.i(TAG, "Final Text: ${_transcriptionText.value}")
-//                    }
-//                    audioState.audioBufferF32 = audioState.audioBufferF32.drop(chunkSize).toMutableList()
-////                        lastProcessedTimestamp = currentTimestamp // Update the last processed timestamp
-//
-////                    audioBuffer = audioBuffer.drop(chunkSize).toMutableList()
-//                }
-//                audioState.isTranscribing = false
-//            } catch (e: Exception) {
-//                Log.e(TAG, "Error during buffer processing: ${e.localizedMessage}", e)
-//            }
-//        }
-//    }
+    fun release() {
+        Log.d(TAG, "Releasing S2T resources...")
+        stopStreaming()
+        scope.cancel("S2T Released")
+        s2tRecorder?.release()
+        mWhisper?.release() // Use release instead of stop
+        s2tRecorder = null
+        mWhisper = null
+        mVad = null
+        Log.d(TAG, "S2T resources released.")
+    }
 
-
-
-    // Copy assets with specified extensions to destination folder
     private fun copyAssetsToSdcard(context: Context, destFolder: File?, extensions: Array<String>) {
         val assetManager = context.assets
 
         try {
-            // List all files in the assets folder once
             val assetFiles = assetManager.list("") ?: return
 
             for (assetFileName in assetFiles) {
-                // Check if file matches any of the provided extensions
                 for (extension in extensions) {
                     if (assetFileName.endsWith(".$extension")) {
                         val outFile = File(destFolder, assetFileName)
 
-                        // Skip if file already exists
                         if (outFile.exists()) break
 
                         assetManager.open(assetFileName).use { inputStream ->
@@ -291,42 +207,12 @@ class S2T(context: Context) {
                                 }
                             }
                         }
-                        break // No need to check further extensions
+                        break
                     }
                 }
             }
         } catch (e: IOException) {
             e.printStackTrace()
         }
-    }
-}
-
-class SharedResource {
-    // Synchronized method for Thread 1 to wait for a signal with a timeout
-    @Synchronized
-    fun waitForSignalWithTimeout(timeoutMillis: Long): Boolean {
-        val startTime = System.currentTimeMillis()
-
-        try {
-            (this as Object).wait(timeoutMillis) // Wait for the given timeout
-        } catch (e: InterruptedException) {
-            Thread.currentThread().interrupt() // Restore interrupt status
-            return false // Thread interruption as timeout
-        }
-
-        val elapsedTime = System.currentTimeMillis() - startTime
-
-        // Check if wait returned due to notify or timeout
-        return if (elapsedTime < timeoutMillis) {
-            true // Returned due to notify
-        } else {
-            false // Returned due to timeout
-        }
-    }
-
-    // Synchronized method for Thread 2 to send a signal
-    @Synchronized
-    fun sendSignal() {
-        (this as Object).notify() // Notifies the waiting thread
     }
 }

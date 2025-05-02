@@ -191,42 +191,42 @@ public class WhisperUtil {
 //        for (int i = 0; i < mel.nLen; i++) {
 /////////////// END of Block ///////////////////////////////////////////////////////////////////////
 
-            int offset = i * fftStep;
+                    int offset = i * fftStep;
 
-            // apply Hanning window
-            for (int j = 0; j < fftSize; j++) {
-                if (offset + j < nSamples) {
-                    fftIn[j] = hann[j] * samples[offset + j];
-                } else {
-                    fftIn[j] = 0.0f;
+                    // apply Hanning window
+                    for (int j = 0; j < fftSize; j++) {
+                        if (offset + j < nSamples) {
+                            fftIn[j] = hann[j] * samples[offset + j];
+                        } else {
+                            fftIn[j] = 0.0f;
+                        }
+                    }
+
+                    // FFT -> mag^2
+                    fft(fftIn, fftOut);
+                    for (int j = 0; j < fftSize; j++) {
+                        fftOut[j] = fftOut[2 * j] * fftOut[2 * j] + fftOut[2 * j + 1] * fftOut[2 * j + 1];
+                    }
+
+                    for (int j = 1; j < fftSize / 2; j++) {
+                        fftOut[j] += fftOut[fftSize - j];
+                    }
+
+                    // mel spectrogram
+                    for (int j = 0; j < mel.nMel; j++) {
+                        double sum = 0.0;
+                        for (int k = 0; k < nFft; k++) {
+                            sum += (fftOut[k] * filters.data[j * nFft + k]);
+                        }
+
+                        if (sum < 1e-10) {
+                            sum = 1e-10;
+                        }
+
+                        sum = log10(sum);
+                        mel.data[j * mel.nLen + i] = (float) sum;
+                    }
                 }
-            }
-
-            // FFT -> mag^2
-            fft(fftIn, fftOut);
-            for (int j = 0; j < fftSize; j++) {
-                fftOut[j] = fftOut[2 * j] * fftOut[2 * j] + fftOut[2 * j + 1] * fftOut[2 * j + 1];
-            }
-
-            for (int j = 1; j < fftSize / 2; j++) {
-                fftOut[j] += fftOut[fftSize - j];
-            }
-
-            // mel spectrogram
-            for (int j = 0; j < mel.nMel; j++) {
-                double sum = 0.0;
-                for (int k = 0; k < nFft; k++) {
-                    sum += (fftOut[k] * filters.data[j * nFft + k]);
-                }
-
-                if (sum < 1e-10) {
-                    sum = 1e-10;
-                }
-
-                sum = log10(sum);
-                mel.data[j * mel.nLen + i] = (float) sum;
-            }
-        }
 
 /////////////// UNCOMMENT below block to use multithreaded mel calculation /////////////////////////
             });
@@ -383,3 +383,4 @@ public class WhisperUtil {
         }
     }
 }
+

@@ -2,6 +2,7 @@ package ai.flox.arch
 
 import ai.flox.state.Action
 import ai.flox.state.State
+import android.util.Log
 
 /**
  * Allows multiple reducers of the same type to be composed into a single reducer.
@@ -34,14 +35,21 @@ class PullbackReducer<ChildState : State, ParentState : State, ChildAction : Act
         state: ParentState,
         action: ParentAction
     ): ReduceResult<ParentState, ParentAction> {
-        val childAction = mapToChildAction(action)
-            ?: return ReduceResult(state, NoEffect)
 
-        val childResult = innerReducer.reduce(mapToChildState(state), childAction)
+        // Get the child state from parent
+        val childState = mapToChildState(state)
 
+        // Reduce the child state
+        val (newChildState, effect) = innerReducer.reduce(childState, mapToChildAction(action)
+            ?: return ReduceResult(state, NoEffect))
+
+        // Create a new parent state with the updated child state
+        val newParentState = mapToParentState(state, newChildState)
+
+        // Make sure we're returning a new parent state instance
         return ReduceResult(
-            mapToParentState(state, childResult.state),
-            childResult.effect.map(mapToParentAction),
+            newParentState,
+            effect.map(mapToParentAction)
         )
     }
 }

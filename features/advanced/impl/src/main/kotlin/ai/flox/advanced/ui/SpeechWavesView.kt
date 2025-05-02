@@ -34,6 +34,8 @@ class SpeechWavesView @JvmOverloads constructor(
     defStyleAttr: Int = 0
 ) : View(context, attrs, defStyleAttr) {
 
+    val TAG = "SpeechWavesView"
+
     private var rawAudioBytes: ByteArray? = null
     private var pointCount: Int = EXTREMUM_NUMBER_MAX
     private var points: Array<Point> = Array(pointCount + 1) { Point(0f, 0f) }

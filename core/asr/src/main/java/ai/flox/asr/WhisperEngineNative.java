@@ -3,7 +3,14 @@ package ai.flox.asr;
 import android.content.Context;
 import android.util.Log;
 
-public class WhisperEngineNative implements WhisperEngine {
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+
+import java.io.IOException;
+
+import kotlin.coroutines.Continuation;
+
+public class WhisperEngineNative { /* implements WhisperEngine {
     private final String TAG = "WhisperEngineNative";
     private final long nativePtr; // Native pointer to the TFLiteEngine instance
 
@@ -62,4 +69,22 @@ public class WhisperEngineNative implements WhisperEngine {
     private native void freeModel(long nativePtr);
     private native String transcribeBuffer(long nativePtr, float[] samples);
     private native String transcribeFile(long nativePtr, String waveFile);
+
+    @Nullable
+    @Override
+    public Object initialize(@NonNull String modelPath, @NonNull String vocabPath, boolean multilingual, @NonNull Continuation<? super Boolean> $completion) throws IOException {
+        return null;
+    }
+
+    @Nullable
+    @Override
+    public Object transcribeFile(@NonNull String wavePath, @NonNull Continuation<? super String> $completion) {
+        return null;
+    }
+
+    @Nullable
+    @Override
+    public Object transcribeBuffer(@NonNull float[] samples, @NonNull Continuation<? super String> $completion) {
+        return null;
+    }*/
 }

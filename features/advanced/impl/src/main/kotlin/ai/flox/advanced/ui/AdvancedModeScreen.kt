@@ -9,8 +9,10 @@ import android.media.AudioAttributes
 import android.media.AudioFormat
 import android.media.AudioTrack
 import android.util.Log
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -19,20 +21,24 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.constraintlayout.compose.ConstraintLayout
 import androidx.constraintlayout.compose.Dimension
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.asCoroutineDispatcher
-import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.util.Arrays
 import java.util.concurrent.Executors
+import kotlin.math.abs
 
-val dispatcher = Executors.newFixedThreadPool(1).asCoroutineDispatcher()
+val inputAnimDispatcher = Executors.newFixedThreadPool(1).asCoroutineDispatcher()
+val outputAnimDispatcher = Executors.newFixedThreadPool(1).asCoroutineDispatcher()
 
 @Composable
 fun AdvancedModeScreen(
@@ -42,13 +48,13 @@ fun AdvancedModeScreen(
 ) {
     val state: AdvancedModeState by stateFlow.collectAsStateWithLifecycle()
     var speechWavesViewRef by remember { mutableStateOf<SpeechWavesView?>(null) }
-    var visualizer by remember { mutableStateOf<AudioPlaybackVisualizer?>(null) }
+    val visualizer by remember { mutableStateOf<AudioPlaybackVisualizer?>(null) }
 
     // Store the AudioTrack reference if needed
     val audioTrackRef = remember { mutableStateOf<AudioTrack?>(null) }
 
     ConstraintLayout(modifier = Modifier.fillMaxSize()) {
-        val (voiceWaves, contentArea, playButton) = createRefs()
+        val (voiceWaves, inputContent, outputContent) = createRefs()
 
         // SpeechWavesView for visualization
         AndroidView(
@@ -72,44 +78,71 @@ fun AdvancedModeScreen(
                 }
         )
 
-        state.assistantOutputState.byteArray?.let { audioData ->
-            // This effect handles cleanup
-            LaunchedEffect (audioData) {
-                    CoroutineScope(dispatcher).launch {
-                        playAudioWithVisualization(audioData, speechWavesViewRef)
-                    }
+        LaunchedEffect(state.forceUpdate) {
+            state.assistantOutputState.voiceSamples?.let { audioData ->
+                withContext(outputAnimDispatcher) {
+                    startOutputVisualisation(audioData, speechWavesViewRef)
+                }
             }
         }
 
-        // Main content area
-        Box(
-            modifier = Modifier
-                .constrainAs(contentArea) {
-                    top.linkTo(voiceWaves.bottom)
-                    bottom.linkTo(playButton.top)
-                    start.linkTo(parent.start)
-                    end.linkTo(parent.end)
-                    width = Dimension.fillToConstraints
-                    height = Dimension.fillToConstraints
+        // Use LaunchedEffect with the content hash as key
+        LaunchedEffect(state.forceUpdate) {
+            state.voiceInputState.voiceSamples?.let { audioData ->
+                withContext(inputAnimDispatcher) {
+                    startInputVisualisation(audioData, speechWavesViewRef)
                 }
-        ) {
-            // Rest of your UI
+            }
         }
-    }
 
-    // This effect handles cleanup
-    DisposableEffect(Unit) {
-        onDispose {
-            visualizer?.stop()
-            audioTrackRef.value?.release()
+        Text(
+            text = state.voiceInputState.text,
+            color = Color.Black,
+            textAlign = TextAlign.Start,
+            fontSize = 32.sp,
+            maxLines = 4,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier
+                .fillMaxWidth()
+                .constrainAs(outputContent) {
+                    top.linkTo(voiceWaves.bottom)
+                    start.linkTo(voiceWaves.start)
+                    end.linkTo(voiceWaves.end)
+                    width = Dimension.fillToConstraints
+                }
+                .padding(16.dp)
+        )
+        Text(
+            text = state.assistantOutputState.text,
+            color = Color.Black,
+            textAlign = TextAlign.Start,
+            fontSize = 32.sp,
+            maxLines = 4,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier
+                .fillMaxWidth()
+                .constrainAs(inputContent) {
+                    bottom.linkTo(voiceWaves.top)
+                    start.linkTo(voiceWaves.start)
+                    end.linkTo(voiceWaves.end)
+                    width = Dimension.fillToConstraints
+                }
+                .padding(16.dp)
+        )
+
+        // This effect handles cleanup
+        DisposableEffect(Unit) {
+            onDispose {
+                visualizer?.stop()
+                audioTrackRef.value?.release()
+            }
         }
     }
 }
 
-private fun playAudioWithVisualization(audioData: FloatArray, speechWavesView: SpeechWavesView?) {
+private fun startOutputVisualisation(audioData: FloatArray, speechWavesView: SpeechWavesView?) {
     if (speechWavesView == null) return
 
-    Log.d("AdvancedModeScreen","playAudioWithVisualization start")
     // Create and configure AudioTrack
     val sampleRate = 24000 // Use the actual sample rate of your audio
     val channelConfig = AudioFormat.CHANNEL_OUT_MONO
@@ -140,7 +173,6 @@ private fun playAudioWithVisualization(audioData: FloatArray, speechWavesView: S
         sampleRate = sampleRate,
         speechWavesView = speechWavesView
     )
-    Log.d("AdvancedModeScreen","playAudioWithVisualization start")
     // Start playback and visualization
     audioTrack.play()
     visualizer.start(audioTrack)
@@ -148,6 +180,40 @@ private fun playAudioWithVisualization(audioData: FloatArray, speechWavesView: S
     // Write data to AudioTrack
     audioTrack.write(audioData, 0, audioData.size, AudioTrack.WRITE_BLOCKING)
 
-//    // Set a marker at the end of the playback
+    // Set a marker at the end of the playback
     audioTrack.setNotificationMarkerPosition(audioData.size)
 }
+
+private fun startInputVisualisation(audioData: FloatArray, speechWavesView: SpeechWavesView?) {
+
+
+    // Create a buffer for visualization
+    val buffer = ByteArray(audioData.size)
+
+    // Find the maximum amplitude in the current window for normalization
+    var maxAmplitude = 0.0f
+    for (element in audioData) {
+        val amplitude = abs(element)
+        if (amplitude > maxAmplitude) {
+            maxAmplitude = amplitude
+        }
+    }
+
+    // Ensure we get visualization even for quiet audio
+    val amplificationFactor = if (maxAmplitude < 1.0e-5f) {
+        1.0e7f
+    } else {
+        1.0f / maxAmplitude
+    }
+
+    // Fill buffer with amplified audio data
+    for (i in audioData.indices) {
+        val amplifiedSample = audioData[i] * amplificationFactor
+        buffer[i] = (amplifiedSample * 127).toInt().coerceIn(-128, 127).toByte()
+    }
+
+
+    // Update the visualization
+    speechWavesView?.update(buffer)
+}
+

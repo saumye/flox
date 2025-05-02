@@ -29,6 +29,6 @@ object AdvancedModeModule {
     @IntoMap
     @StringKey(AdvancedModeState.stateKey)
     fun provideState(): State {
-        return AdvancedModeState()
+        return AdvancedModeState(null)
     }
 }
