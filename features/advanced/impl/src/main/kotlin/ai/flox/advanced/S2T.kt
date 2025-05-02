@@ -1,7 +1,6 @@
 package ai.flox.advanced
 
 import ai.flox.asr.Whisper
-import ai.flox.asr.Whisper.WhisperListener
 import ai.liv.s2tlibrary.AudioRecorderConfig
 import ai.liv.s2tlibrary.RecorderState
 import ai.liv.s2tlibrary.S2TAudioRecorder
@@ -43,6 +42,10 @@ class S2T(private val context: Context) {
     // Expose the VAD state flow
     val isSpeechDetectedFlow: StateFlow<Boolean>?
         get() = s2tRecorder?.isSpeechDetected
+
+    // Flow to emit transcription results
+    private val _transcriptionResultFlow = MutableSharedFlow<String>()
+    val transcriptionResultFlow = _transcriptionResultFlow.asSharedFlow()
 
     private var sdcardDataFolder: File? = null
 
@@ -96,7 +99,7 @@ class S2T(private val context: Context) {
         }
     }
 
-    fun startStreaming(listener: WhisperListener? = null) {
+    fun startStreaming() {
         scope.launch {
             val recorder = s2tRecorder ?: run {
                 Log.e(TAG, "Recorder not initialized!")
@@ -131,15 +134,18 @@ class S2T(private val context: Context) {
 
             Log.d(TAG, "Starting streaming...")
 
-            listener?.let { mWhisper?.setListener(it) }
-
             audioCollectionJob?.cancel()
 
             audioCollectionJob = scope.launch {
                 Log.d(TAG, "Starting audio data collection for Whisper...")
                 try {
                     recorder.whisperAudioData.collect { audioChunk ->
-                        mWhisper?.transcribeBuffer(audioChunk)
+                        // Call transcribeBuffer and get the result directly
+                        val result = mWhisper?.transcribeBuffer(audioChunk)
+                        if (!result.isNullOrBlank()) {
+                            // Emit the result to the flow
+                            _transcriptionResultFlow.emit(result)
+                        }
                     }
                 } catch (e: CancellationException) {
                     Log.i(TAG, "Whisper audio collection job cancelled.")

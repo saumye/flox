@@ -49,6 +49,7 @@ class AdvancedModeViewModel @Inject constructor(
     // Job for collecting VAD state
     private var vadStateJob: Job? = null
     private var listenerAudioJob: Job? = null // Keep track of listener job
+    private var transcriptionResultJob: Job? = null // Job for collecting transcription results
 
     @Pure
     @Synchronized
@@ -179,6 +180,7 @@ class AdvancedModeViewModel @Inject constructor(
         // Ensure any previous jobs are cancelled before starting new ones
         listenerAudioJob?.cancel()
         vadStateJob?.cancel()
+        transcriptionResultJob?.cancel() // Cancel previous transcription collection
 
         return callbackFlow {
             // Collect listener audio data
@@ -223,21 +225,27 @@ class AdvancedModeViewModel @Inject constructor(
                 }
             } ?: run { Log.w(TAG, "isSpeechDetectedFlow is null") }
 
-            // Start streaming (Whisper listener setup)
-            s2t.startStreaming(object : Whisper.WhisperListener {
-                override fun onUpdateReceived(message: String) { /* Potential partial update */ }
-                override fun onResultReceived(result: String) {
-                    if (result.isNotBlank()) {
-                        // Append result (reducer updates _currentUtteranceText)
-                        trySend(AdvancedModeAction.AppendUserText(textSegment = result + " "))
+            // Collect Transcription Results
+            transcriptionResultJob = viewModelScope.launch {
+                s2t.transcriptionResultFlow
+                    .catch { e -> Log.e(TAG, "Error in transcriptionResultFlow", e) }
+                    .collect { result ->
+                        if (result.isNotBlank()) {
+                            Log.d(TAG, "Collected transcription result: '$result'")
+                            // Append result (reducer updates _currentUtteranceText)
+                            trySend(AdvancedModeAction.AppendUserText(textSegment = result + " "))
+                        }
                     }
-                }
-            })
+            }
+
+            // Start streaming (No listener needed anymore)
+            s2t.startStreaming() // Remove the listener argument
 
             awaitClose {
                 Log.d(TAG, "recordMessage Flow closing (awaitClose)")
                 listenerAudioJob?.cancel()
                 vadStateJob?.cancel()
+                transcriptionResultJob?.cancel() // Cancel transcription collection
                 // s2t.stopStreaming() // Stop is now triggered by VAD logic
             }
         }.buffer(Channel.BUFFERED) // Use a buffered channel
