@@ -31,3 +31,4 @@ include(":features:advanced:impl")
 
 include(":core:tts")
 include(":core:asr")
+include(":core:smollm")

@@ -142,6 +142,7 @@ class S2T(private val context: Context) {
                     recorder.whisperAudioData.collect { audioChunk ->
                         // Call transcribeBuffer and get the result directly
                         val result = mWhisper?.transcribeBuffer(audioChunk)
+                        Log.d(TAG,"Returned result from transcribeBuffer: $result")
                         if (!result.isNullOrBlank()) {
                             // Emit the result to the flow
                             _transcriptionResultFlow.emit(result)

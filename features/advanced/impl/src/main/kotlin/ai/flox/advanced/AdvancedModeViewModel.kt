@@ -271,11 +271,9 @@ class AdvancedModeViewModel @Inject constructor(
                 s2t.transcriptionResultFlow
                     .catch { e -> Log.e(TAG, "Error in transcriptionResultFlow", e) }
                     .collect { result ->
-                        if (result.isNotBlank()) {
                             Log.d(TAG, "Collected transcription result: '$result'")
                             // Append result (reducer updates _currentUtteranceText)
                             trySend(AdvancedModeAction.AppendUserText(textSegment = result + " "))
-                        }
                     }
             }
 

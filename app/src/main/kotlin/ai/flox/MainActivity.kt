@@ -5,6 +5,7 @@ import ai.flox.chat.ChatRoutes
 import ai.flox.conversation.model.ChatIds
 import ai.flox.conversation.model.Conversation
 import ai.flox.conversation.model.ConversationAction
+import ai.flox.di.NavigationComponent.map
 import ai.flox.home.HomeRoutes
 import ai.flox.di.NavigationComponent.register
 import ai.flox.home.model.HomeIds
@@ -13,7 +14,6 @@ import ai.flox.model.AppIds.topBarIcon
 import ai.flox.state.Action
 import ai.flox.state.Resource
 import ai.flox.state.State
-import ai.flox.state.map
 import ai.flox.ui.BottomBar
 import ai.flox.ui.theme.FloxTheme
 import android.os.Bundle

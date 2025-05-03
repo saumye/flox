@@ -96,7 +96,9 @@ class WhisperEngineJava(
                 return@withContext null
             }
              Log.d(TAG, "Mel spectrogram calculated. Running inference...")
-            runInference(melSpectrogram)
+            val x = runInference(melSpectrogram)
+             Log.d(TAG,"Returned result from runInference: $x")
+             x
          }
     }
 

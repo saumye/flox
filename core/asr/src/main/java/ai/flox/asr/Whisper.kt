@@ -118,6 +118,7 @@ class Whisper(
         // Call the suspend function in the engine
          Log.v(TAG, "Passing ${samples.size} samples to engine's transcribeBuffer")
         val result = whisperEngine.transcribeBuffer(samples)
+        Log.d(TAG,"Returned result from transcribeBuffer: $result")
          if (result != null) {
              // sendResult(result) // Removed listener call
              return result // Return result directly

@@ -18,4 +18,5 @@ dependencies {
     implementation(project(":core:base"))
     implementation(project(":core:tts"))
     implementation(project(":core:asr"))
+    implementation(project(":core:smollm"))
 }

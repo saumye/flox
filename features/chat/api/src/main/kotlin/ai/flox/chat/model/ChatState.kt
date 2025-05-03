@@ -9,7 +9,7 @@ data class ChatState(
     val composeState: ComposeState = ComposeState.LoadComplete(),
     val voiceInputState: VoiceState = VoiceState(),
     val assistantOutputState: VoiceState = VoiceState(),
-    val isOnlineMode: Boolean = true
+    val isOnlineMode: Boolean = false
 ) : State {
 
     sealed interface ComposeState {
