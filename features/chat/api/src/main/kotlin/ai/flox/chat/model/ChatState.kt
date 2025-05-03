@@ -8,7 +8,8 @@ data class ChatState(
     val recentChatList: Map<String, ChatMessage> = mapOf(),
     val composeState: ComposeState = ComposeState.LoadComplete(),
     val voiceInputState: VoiceState = VoiceState(),
-    val assistantOutputState: VoiceState = VoiceState()
+    val assistantOutputState: VoiceState = VoiceState(),
+    val isOnlineMode: Boolean = true
 ) : State {
 
     sealed interface ComposeState {

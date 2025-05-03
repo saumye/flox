@@ -12,6 +12,10 @@ import androidx.annotation.FloatRange
 import androidx.annotation.IntRange
 import java.util.Arrays
 import kotlin.math.round
+import android.animation.ValueAnimator
+import kotlinx.coroutines.Job
+import android.view.animation.LinearInterpolator
+import kotlin.math.sin
 
 enum class AnimationSpeed {
     SLOW, NORMAL, FAST
@@ -76,6 +80,14 @@ class SpeechWavesView @JvmOverloads constructor(
             maxBatchCount = MAX_ANIM_BATCH_COUNT - field.ordinal
         }
 
+    // Add idle animation properties
+    private var isIdle = true
+    private var idleAnimationJob: Job? = null
+    private val idleAnimationAmplitude = 10f
+    private val idleAnimationFrequency = 0.5f
+    private val idleAnimator = ValueAnimator.ofFloat(0f, 2 * Math.PI.toFloat())
+    private val idleAmplitude = 8f // Adjust for subtle effect
+
     init {
         val a = context.theme.obtainStyledAttributes(attrs, R.styleable.VoiceWave, 0, 0)
         if (attrs != null) {
@@ -86,6 +98,20 @@ class SpeechWavesView @JvmOverloads constructor(
             a.recycle()
         }
         createArraysIfChanged()
+
+        // Configure idle animation
+        idleAnimator.apply {
+            duration = 3000 // 3 seconds per cycle
+            repeatCount = ValueAnimator.INFINITE
+            repeatMode = ValueAnimator.RESTART
+            interpolator = LinearInterpolator()
+            addUpdateListener { animator ->
+                if (isIdle) {
+                    generateIdleWaveform(animator.animatedValue as Float)
+                    invalidate()
+                }
+            }
+        }
     }
 
     fun update(bytes: ByteArray?) {
@@ -210,6 +236,58 @@ class SpeechWavesView @JvmOverloads constructor(
         val heightCenter = rect.height() / 2
         val diff = y - heightCenter
         return heightCenter + diff * coefficient
+    }
+
+    /**
+     * Generate a gentle sine wave for idle animation
+     */
+    private fun generateIdleWaveform(phase: Float) {
+        val idleBytes = ByteArray(128) { i ->
+            val x = i.toFloat() / 128 * 2 * Math.PI.toFloat()
+            val value = (idleAmplitude * sin(x + phase)).toInt()
+            value.toByte()
+        }
+        updateRawByteArray(idleBytes)
+    }
+    
+    /**
+     * Set the view's idle state
+     */
+    fun setIdleState(idle: Boolean) {
+        if (this.isIdle != idle) {
+            this.isIdle = idle
+            if (idle) {
+                startIdleAnimation()
+            } else {
+                stopIdleAnimation()
+            }
+        }
+    }
+    
+    private fun startIdleAnimation() {
+        if (!idleAnimator.isStarted) {
+            idleAnimator.start()
+        } else if (idleAnimator.isPaused) {
+            idleAnimator.resume()
+        }
+    }
+    
+    private fun stopIdleAnimation() {
+        if (idleAnimator.isStarted && !idleAnimator.isPaused) {
+            idleAnimator.pause()
+        }
+    }
+
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        if (isIdle) {
+            startIdleAnimation()
+        }
+    }
+    
+    override fun onDetachedFromWindow() {
+        idleAnimator.cancel()
+        super.onDetachedFromWindow()
     }
 
     companion object {

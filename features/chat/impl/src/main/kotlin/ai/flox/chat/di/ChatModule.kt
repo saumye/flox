@@ -3,6 +3,7 @@ package ai.flox.chat.di
 import ai.flox.arch.Reducer
 import ai.flox.chat.ChatListViewModel
 import ai.flox.chat.data.ChatRepository
+import ai.flox.chat.data.LocalLlm
 import ai.flox.chat.model.ChatAction
 import ai.flox.chat.model.ChatState
 import ai.flox.network.openai.OpenAIService
@@ -23,13 +24,22 @@ import javax.inject.Singleton
 @InstallIn(SingletonComponent::class)
 object ChatModule {
 
-    @Singleton
     @Provides
+    @Singleton
+    fun provideLocalLlm(@ApplicationContext context: Context): LocalLlm {
+        return LocalLlm(context)
+    }
+
+    @Provides
+    @Singleton
     fun provideChatRepository(
         openAIService: OpenAIService,
-        chatDao: ChatDAO,
+        localLlm: LocalLlm,
+        chatDAO: ChatDAO,
         @ApplicationContext context: Context
-    ): ChatRepository = ChatRepository(openAIService, chatDao, context)
+    ): ChatRepository {
+        return ChatRepository(openAIService, localLlm, chatDAO, context)
+    }
 
     @Provides
     @IntoMap

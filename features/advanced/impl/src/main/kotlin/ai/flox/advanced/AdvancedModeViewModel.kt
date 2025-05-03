@@ -7,7 +7,6 @@ import ai.flox.arch.ReduceResult
 import ai.flox.arch.Reducer
 import ai.flox.arch.noEffect
 import ai.flox.arch.withFlowEffect
-import ai.flox.asr.Whisper
 import ai.flox.chat.model.ChatAction
 import ai.flox.chat.model.ChatMessage
 import ai.flox.chat.model.ChatMessage.Companion.USER_ID_AI
@@ -25,13 +24,23 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.awaitClose
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.buffer
+import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.merge
+import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.take
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
 class AdvancedModeViewModel @Inject constructor(
-    @ApplicationContext private val application: Context,
+    @ApplicationContext private val application: Context
 ) : ViewModel(), Reducer<AdvancedModeState, Action> {
 
     val TAG = "AdvancedModeViewModel"
@@ -146,13 +155,11 @@ class AdvancedModeViewModel @Inject constructor(
             }
             is AdvancedModeAction.UserInput -> {
                 _currentUtteranceText.value = "" // Clear accumulator
+                // Send message using the repository with the online/offline state
                 state.copy(
                     voiceInputState = state.voiceInputState.copy(text = "") // Clear display
                 ).withFlowEffect(
-                    flowOf(ChatAction.SendMessage(
-                        message = action.text,
-                        conversation = state.conversation!!
-                    ))
+                    flowOf(ChatAction.SendMessage(action.text, state.conversation!!))
                 )
             }
 
@@ -160,16 +167,48 @@ class AdvancedModeViewModel @Inject constructor(
             is AdvancedModeAction.TtsStarted -> {
                 Log.d(TAG, "Reducer: TTS Started")
                 _isTtsSpeaking.value = true
-                state.noEffect()
+                state.withFlowEffect(flowOf(AdvancedModeAction.SetIdleState(false, USER_ID_AI)))
             }
             is AdvancedModeAction.TtsFinished -> {
                 Log.d(TAG, "Reducer: TTS Finished")
                 _isTtsSpeaking.value = false
-                // Option 1: Immediately start recording again after TTS
-                return state.withFlowEffect(flowOf(AdvancedModeAction.StartRecord(state.conversation!!)))
+                state.withFlowEffect(
+                    merge(
+                        flowOf(AdvancedModeAction.SetIdleState(true, USER_ID_AI)),
+                        flowOf(AdvancedModeAction.StartRecord(state.conversation!!))
+                    )
+                )
+            }
 
-                // Option 2: Go back to idle, let user initiate recording (less aggressive)
-                // return state.noEffect() // Keep commented out
+            is AdvancedModeAction.ToggleOnlineMode -> {
+                state.copy(
+                    isOnlineMode = action.isOnline,
+                    forceUpdate = System.nanoTime()
+                ).noEffect()
+            }
+            
+            is AdvancedModeAction.CloseAction -> {
+                // Stop recording, TTS, and navigate back
+                s2t.stopStreaming()
+                tts.stop()
+                
+                state.withFlowEffect(flowOf(Action.Navigate.BACK))
+            }
+            
+            is AdvancedModeAction.SetIdleState -> {
+                // Update idle state for visualization
+                val newState = state.copy()
+                if (action.source == USER_ID_AI) {
+                    newState.assistantOutputState = state.assistantOutputState.copy(
+                        isIdle = action.isIdle
+                    )
+                } else {
+                    newState.voiceInputState = state.voiceInputState.copy(
+                        isIdle = action.isIdle
+                    )
+                }
+                newState.forceUpdate = System.nanoTime()
+                newState.noEffect()
             }
 
             else -> state.noEffect()
@@ -183,6 +222,9 @@ class AdvancedModeViewModel @Inject constructor(
         transcriptionResultJob?.cancel() // Cancel previous transcription collection
 
         return callbackFlow {
+            // First set user not idle when recording starts
+            trySend(AdvancedModeAction.SetIdleState(false, USER_ID_SELF))
+
             // Collect listener audio data
             s2t.listenerAudioData?.let {
                 listenerAudioJob = viewModelScope.launch {
@@ -197,8 +239,7 @@ class AdvancedModeViewModel @Inject constructor(
             s2t.isSpeechDetectedFlow?.let {
                 vadStateJob = viewModelScope.launch {
                     var speechStartTime = -1L // Track when speech started
-                    it
-                        .onEach { speaking -> if (speaking && speechStartTime < 0) speechStartTime = System.currentTimeMillis() } // Mark speech start
+                    it.onEach { speaking -> if (speaking && speechStartTime < 0) speechStartTime = System.currentTimeMillis() } // Mark speech start
                         .debounce { speaking -> if (speaking) 0L else 1000L } // Emit immediately if speaking, debounce silence by 1s
                         .filter { !it && speechStartTime >= 0 } // Interested in silence *after* speech started
                         .take(1) // Only need the first occurrence of end-of-speech
@@ -241,12 +282,15 @@ class AdvancedModeViewModel @Inject constructor(
             // Start streaming (No listener needed anymore)
             s2t.startStreaming() // Remove the listener argument
 
+            // Add idle state reset when stopping recording
             awaitClose {
                 Log.d(TAG, "recordMessage Flow closing (awaitClose)")
                 listenerAudioJob?.cancel()
                 vadStateJob?.cancel()
-                transcriptionResultJob?.cancel() // Cancel transcription collection
-                // s2t.stopStreaming() // Stop is now triggered by VAD logic
+                transcriptionResultJob?.cancel()
+                
+                // Set user idle when recording stops
+                trySend(AdvancedModeAction.SetIdleState(true, USER_ID_SELF))
             }
         }.buffer(Channel.BUFFERED) // Use a buffered channel
             .catch { e -> Log.e(TAG, "Error in recordMessage flow", e) } // Catch errors in the flow

@@ -1,5 +1,6 @@
 package ai.flox.chat
 
+import ai.flox.advanced.model.AdvancedModeAction
 import ai.flox.arch.Pure
 import ai.flox.arch.ReduceResult
 import ai.flox.arch.Reducer
@@ -39,7 +40,7 @@ class ChatListViewModel @Inject constructor(
                                     userId = ChatMessage.USER_ID_SELF,
                                     conversation = action.conversation,
                                     timestamp = Date(System.currentTimeMillis())
-                                )
+                                ), false
                             ), flowOf(
                                 ConversationAction.CreateOrUpdateConversation(
                                     Resource.Success(
@@ -52,6 +53,12 @@ class ChatListViewModel @Inject constructor(
                             )
                         )
                     )
+            }
+
+            is AdvancedModeAction.ToggleOnlineMode -> {
+                state.copy(
+                    isOnlineMode = action.isOnline
+                ).noEffect()
             }
 
             is ConversationAction.CreateOrUpdateConversation -> {
@@ -86,7 +93,7 @@ class ChatListViewModel @Inject constructor(
                 when (action.resource) {
                     is Resource.Pending<ChatMessage> -> {
                         val res = action.resource as Resource.Pending<ChatMessage>
-                        state.withFlowEffect(chatRepository.sendMessage(res.data))
+                        state.withFlowEffect(chatRepository.sendMessage(res.data, state.isOnlineMode))
                     }
 
                     is Resource.Success<ChatMessage> -> {

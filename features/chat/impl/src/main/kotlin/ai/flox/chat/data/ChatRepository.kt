@@ -26,6 +26,7 @@ import javax.inject.Inject
 
 class ChatRepository @Inject constructor(
     private val openAIService: OpenAIService,
+    private val localLlm: LocalLlm,
     private val chatDAO: ChatDAO,
     @ApplicationContext private val application: Context
 ) {
@@ -43,43 +44,57 @@ class ChatRepository @Inject constructor(
         }
     }
 
-    fun sendMessage(message: ChatMessage): Flow<ChatAction> {
+    fun sendMessage(message: ChatMessage, isOnlineMode: Boolean = true): Flow<ChatAction> {
         return flow {
+            // Save the user message to database
             chatDAO.insertOrUpdate(message.toLocal(message.conversation))
+            
+            // Emit the user message to UI
             emit(
                 ChatAction.CreateOrUpdateMessages(Resource.Success(message))
             )
-            val response = openAIService.completions(OpenAIRequest.fromDomain(message.message))
+            
+            // Get response from appropriate service based on mode
+            val response = if (isOnlineMode) {
+                // Use online service
+                openAIService.completions(OpenAIRequest.fromDomain(message.message))
+            } else {
+                // Use offline service
+                localLlm.completions(message)
+            }
+            
+            // Process the response
             if (response is NetworkResource.Success) {
                 response.data?.let {
-                    chatDAO.insertOrUpdate(
-                        it.toDomain(
-                            Date(System.currentTimeMillis()),
-                            message.conversation
-                        ).toLocal(message.conversation)
+                    // Create AI message
+                    val aiMessage = it.toDomain(
+                        Date(System.currentTimeMillis()),
+                        message.conversation
                     )
+                    
+                    // Save AI message to database
+                    chatDAO.insertOrUpdate(aiMessage.toLocal(message.conversation))
+                    
+                    // Update user message status
                     emit(
                         ChatAction.CreateOrUpdateMessages(
                             Resource.Success(
-                                message.copy(
-                                    messageState = SyncStatus.COMPLETED
-                                )
+                                message.copy(messageState = SyncStatus.COMPLETED)
                             )
                         )
                     )
+                    
+                    // Emit AI response
                     emit(
                         ChatAction.CreateOrUpdateMessages(
                             Resource.Success(
-                                it.toDomain(
-                                    Date(System.currentTimeMillis()),
-                                    message.conversation
-                                )
-                                    .copy(messageState = SyncStatus.COMPLETED)
+                                aiMessage.copy(messageState = SyncStatus.COMPLETED)
                             )
                         )
                     )
                 }
             } else if (response is NetworkResource.Failure) {
+                // Handle failure
                 emit(
                     ChatAction.CreateOrUpdateMessages(
                         Resource.Failure(

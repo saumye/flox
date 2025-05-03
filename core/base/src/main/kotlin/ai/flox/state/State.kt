@@ -24,8 +24,11 @@ interface Action {
 
     data class Navigate(
         val route: String,
-
-    ) : Action
+    ) : Action {
+        companion object {
+            val BACK = Navigate("back")
+        }
+    }
 
     sealed interface Data<T> : Action {
 

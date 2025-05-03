@@ -17,8 +17,11 @@ class NavigationReducer: Reducer<AppState, Action> {
                 if(!::appNavController.isInitialized) {
                     Log.d("NavigationReducer", "NavController is not initialised")
                     return state.noEffect()
+                } else if(action == Action.Navigate.BACK){
+                    appNavController.popBackStack()
+                } else {
+                    appNavController.navigate(action.route)
                 }
-                appNavController.navigate(action.route)
                 state.noEffect()
             }
             else -> state.noEffect()

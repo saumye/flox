@@ -9,6 +9,7 @@ data class AdvancedModeState(
     var recentChatList: Map<String, ChatMessage> = mapOf(),
     var voiceInputState: VoiceState = VoiceState(),
     var assistantOutputState: VoiceState = VoiceState(),
+    var isOnlineMode: Boolean = true,  // Add online/offline mode toggle state
     var forceUpdate: Long = 0  // Add this field
 ) : State {
     override fun equals(other: Any?): Boolean {
@@ -39,7 +40,11 @@ data class AdvancedModeState(
         return result
     }
 
-    data class VoiceState(val text: String = "", val voiceSamples: FloatArray? = null) {
+    data class VoiceState(
+        val text: String = "", 
+        val voiceSamples: FloatArray? = null,
+        val isIdle: Boolean = true  // Add idle state for animation
+    ) {
         override fun equals(other: Any?): Boolean {
             if (this === other) return true
             if (javaClass != other?.javaClass) return false

@@ -14,7 +14,7 @@ data class AppState(
     val applifecycle: Lifecycle.State = Lifecycle.State.INITIALIZED,
     val bottomBarState: BottomBarState = BottomBarState(),
     val userState: UserState = UserState.NoUser,
-    val networkState: NetworkState = NetworkState.Offline
+    val networkState: NetworkState = NetworkState.Offline,
 ) : State {
     companion object {
         const val stateKey = "appState"

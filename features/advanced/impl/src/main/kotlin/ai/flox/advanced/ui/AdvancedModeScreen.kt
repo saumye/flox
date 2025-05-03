@@ -1,8 +1,11 @@
 package ai.flox.advanced.ui
 
 import ai.flox.advanced.AudioPlaybackVisualizer
+import ai.flox.advanced.model.AdvancedModeAction
 import ai.flox.advanced.model.AdvancedModeState
 import ai.flox.arch.Store
+import ai.flox.chat.model.ChatMessage.Companion.USER_ID_AI
+import ai.flox.chat.model.ChatMessage.Companion.USER_ID_SELF
 import ai.flox.state.Action
 import ai.flox.state.State
 import android.media.AudioAttributes
@@ -12,6 +15,15 @@ import android.util.Log
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -54,7 +66,54 @@ fun AdvancedModeScreen(
     val audioTrackRef = remember { mutableStateOf<AudioTrack?>(null) }
 
     ConstraintLayout(modifier = Modifier.fillMaxSize()) {
-        val (voiceWaves, inputContent, outputContent) = createRefs()
+        val (onlineToggle, onlineIcon, closeButton, voiceWaves, inputContent, outputContent ) = createRefs()
+
+        // Online/Offline toggle with icon
+        Switch(
+            checked = state.isOnlineMode,
+            onCheckedChange = { isOnline ->
+                store.dispatch(AdvancedModeAction.ToggleOnlineMode(isOnline, conversation))
+            },
+            modifier = Modifier
+                .constrainAs(onlineToggle) {
+                    top.linkTo(parent.top, 16.dp)
+                    start.linkTo(parent.start, 16.dp)
+                }
+        )
+        
+        Icon(
+            imageVector = if (state.isOnlineMode) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
+            contentDescription = if (state.isOnlineMode) "Online Mode" else "Offline Mode",
+            tint = if (state.isOnlineMode) MaterialTheme.colorScheme.primary else Color.Gray,
+            modifier = Modifier
+                .constrainAs(onlineIcon) {
+                    top.linkTo(onlineToggle.top)
+                    bottom.linkTo(onlineToggle.bottom)
+                    start.linkTo(onlineToggle.end, 8.dp)
+                }
+                .size(24.dp)
+        )
+
+        // Close button
+        IconButton(
+            onClick = {
+                state.conversation?.let {
+                    store.dispatch(AdvancedModeAction.CloseAction(it))
+                }
+            },
+            modifier = Modifier
+                .constrainAs(closeButton) {
+                    top.linkTo(parent.top, 16.dp)
+                    end.linkTo(parent.end, 16.dp)
+                }
+                .size(48.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Filled.Close,
+                contentDescription = "Close",
+                tint = MaterialTheme.colorScheme.primary
+            )
+        }
 
         // SpeechWavesView for visualization
         AndroidView(
@@ -63,6 +122,8 @@ fun AdvancedModeScreen(
                     density = 0.2f
                     pathCount = 4
                     speed = AnimationSpeed.NORMAL
+                    // Initialize with idle state true
+                    setIdleState(true)
                 }.also {
                     speechWavesViewRef = it
                 }
@@ -78,19 +139,34 @@ fun AdvancedModeScreen(
                 }
         )
 
+        // Handle state changes for visualization
         LaunchedEffect(state.forceUpdate) {
-            state.assistantOutputState.voiceSamples?.let { audioData ->
-                withContext(outputAnimDispatcher) {
-                    startOutputVisualisation(audioData, speechWavesViewRef)
-                }
-            }
-        }
-
-        // Use LaunchedEffect with the content hash as key
-        LaunchedEffect(state.forceUpdate) {
-            state.voiceInputState.voiceSamples?.let { audioData ->
-                withContext(inputAnimDispatcher) {
-                    startInputVisualisation(audioData, speechWavesViewRef)
+            // For both input and output, set idle state when no samples are present
+            // and inactive when samples are being processed
+            speechWavesViewRef?.let { waveView ->
+                val isOutputIdle = state.assistantOutputState.voiceSamples == null
+                val isInputIdle = state.voiceInputState.voiceSamples == null
+                
+                if (isOutputIdle && isInputIdle) {
+                    // Both idle - show idle animation
+                    waveView.setIdleState(true)
+                } else {
+                    // Activity detected - process visualization
+                    waveView.setIdleState(false)
+                    
+                    // Process output visualization
+                    state.assistantOutputState.voiceSamples?.let { audioData ->
+                        withContext(outputAnimDispatcher) {
+                            startOutputVisualisation(audioData, waveView)
+                        }
+                    }
+                    
+                    // Process input visualization
+                    state.voiceInputState.voiceSamples?.let { audioData ->
+                        withContext(inputAnimDispatcher) {
+                            startInputVisualisation(audioData, waveView)
+                        }
+                    }
                 }
             }
         }

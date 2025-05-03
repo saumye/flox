@@ -3,6 +3,7 @@ package ai.flox.advanced.model
 import ai.flox.advanced.model.AdvancedModeAction.AdvancedModeIds.AdvancedConversationView
 import ai.flox.advanced.model.AdvancedModeAction.AdvancedModeIds.Close
 import ai.flox.advanced.model.AdvancedModeAction.AdvancedModeIds.InputText
+import ai.flox.advanced.model.AdvancedModeAction.AdvancedModeIds.Settings
 import ai.flox.advanced.model.AdvancedModeAction.AdvancedModeIds.Visualisation
 import ai.flox.conversation.model.Conversation
 import ai.flox.state.Action
@@ -76,10 +77,19 @@ sealed interface AdvancedModeAction : Action {
         override val componentIdentifier: ComponentIdentifier = Close
     }
 
+    data class ToggleOnlineMode(val isOnline: Boolean, val conversation: String) : Action.UI.InputEvent, AdvancedModeAction {
+        override val componentIdentifier: ComponentIdentifier = Settings
+    }
+
+    data class SetIdleState(val isIdle: Boolean, val source: String) : Action.UI.RenderEvent, AdvancedModeAction {
+        override val componentIdentifier: ComponentIdentifier = Visualisation
+    }
+
     object AdvancedModeIds {
         const val AdvancedConversationView = "AdvancedConversationView"
         const val Close = "Close"
         const val Visualisation = "Visualisation"
         const val InputText = "InputText"
+        const val Settings = "Settings"
     }
 }
