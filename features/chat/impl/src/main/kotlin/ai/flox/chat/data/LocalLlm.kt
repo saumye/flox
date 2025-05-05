@@ -33,7 +33,7 @@ class LocalLlm @Inject constructor(
     @ApplicationContext private val context: Context,
 ) {
     private val TAG = "LocalLLM"
-    private val modelFileName = "gemma-2-2b-it-IQ4_XS.gguf"
+    private val modelFileName = "model.gguf"
     private val minP = 0.05f
     private val temperature = 1.0f
     private val smolLM = SmolLM()
