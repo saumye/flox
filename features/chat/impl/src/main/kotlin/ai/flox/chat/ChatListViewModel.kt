@@ -40,7 +40,7 @@ class ChatListViewModel @Inject constructor(
                                     userId = ChatMessage.USER_ID_SELF,
                                     conversation = action.conversation,
                                     timestamp = Date(System.currentTimeMillis())
-                                ), false
+                                ), state.isOnlineMode
                             ), flowOf(
                                 ConversationAction.CreateOrUpdateConversation(
                                     Resource.Success(
@@ -55,7 +55,7 @@ class ChatListViewModel @Inject constructor(
                     )
             }
 
-            is AdvancedModeAction.ToggleOnlineMode -> {
+            is ChatAction.ToggleOnlineMode -> {
                 state.copy(
                     isOnlineMode = action.isOnline
                 ).noEffect()

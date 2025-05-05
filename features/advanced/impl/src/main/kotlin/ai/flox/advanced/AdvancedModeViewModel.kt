@@ -88,8 +88,6 @@ class AdvancedModeViewModel @Inject constructor(
                         val res = action.resource as Resource.Success<ChatMessage>
                         val message = res.data
                         if(!message.isSelf() && message.conversation.id.equals(state.conversation?.id)) {
-                            _currentUtteranceText.value = ""
-                            // Only trigger StartSpeak if TTS isn't already running (e.g., from a previous message)
                             if (!_isTtsSpeaking.value) {
                                 return state.copy(
                                     voiceInputState = state.voiceInputState.copy(text = "")
@@ -180,7 +178,7 @@ class AdvancedModeViewModel @Inject constructor(
                 )
             }
 
-            is AdvancedModeAction.ToggleOnlineMode -> {
+            is ChatAction.ToggleOnlineMode -> {
                 state.copy(
                     isOnlineMode = action.isOnline,
                     forceUpdate = System.nanoTime()
@@ -237,21 +235,23 @@ class AdvancedModeViewModel @Inject constructor(
 
             // Collect VAD State to detect end of speech
             s2t.isSpeechDetectedFlow?.let {
+                Log.d(TAG, "recordMessage: Setting up VAD collection.") // Log VAD setup start
                 vadStateJob = viewModelScope.launch {
-                    var speechStartTime = -1L // Track when speech started
-                    it.onEach { speaking -> if (speaking && speechStartTime < 0) speechStartTime = System.currentTimeMillis() } // Mark speech start
+                    var speechStartTime = -1L
+                    it.onEach { speaking ->
+                        // Log VAD state changes directly here
+                        Log.d(TAG, "recordMessage: VAD detected speaking: $speaking")
+                        if (speaking && speechStartTime < 0) speechStartTime = System.currentTimeMillis()
+                    }
                         .debounce { speaking -> if (speaking) 0L else 1000L } // Emit immediately if speaking, debounce silence by 1s
                         .filter { !it && speechStartTime >= 0 } // Interested in silence *after* speech started
                         .take(1) // Only need the first occurrence of end-of-speech
-                        .collect { _ -> // isSpeaking will be false here
-                            Log.d(TAG, "VAD detected end of speech (silence > 1s after speech)")
+                        .collect { _ ->
+                            Log.d(TAG, "recordMessage: VAD detected end of speech.") // Log VAD end detection
                             val finalText = _currentUtteranceText.value.trim()
                             if (finalText.isNotBlank()) {
                                 Log.i(TAG, "Sending final UserInput: '$finalText'")
                                 trySend(AdvancedModeAction.UserInput(text = finalText))
-                                // Clear accumulator immediately after sending UserInput action
-                                // The reducer will handle clearing it from the state later
-                                _currentUtteranceText.value = ""
                             } else {
                                 Log.i(TAG, "End of speech detected, but no text accumulated.")
                             }
@@ -268,21 +268,23 @@ class AdvancedModeViewModel @Inject constructor(
 
             // Collect Transcription Results
             transcriptionResultJob = viewModelScope.launch {
+                Log.d(TAG, "Transcription collector job started.")
                 s2t.transcriptionResultFlow
                     .catch { e -> Log.e(TAG, "Error in transcriptionResultFlow", e) }
                     .collect { result ->
                             Log.d(TAG, "Collected transcription result: '$result'")
-                            // Append result (reducer updates _currentUtteranceText)
                             trySend(AdvancedModeAction.AppendUserText(textSegment = result + " "))
                     }
+                Log.d(TAG, "Transcription collector job finished.")
             }
 
-            // Start streaming (No listener needed anymore)
+            // Start streaming
+            Log.d(TAG, "recordMessage: Calling s2t.startStreaming()") // Log before startStreaming
             s2t.startStreaming() // Remove the listener argument
 
             // Add idle state reset when stopping recording
             awaitClose {
-                Log.d(TAG, "recordMessage Flow closing (awaitClose)")
+                Log.d(TAG, "recordMessage Flow closing (awaitClose)") // Log close
                 listenerAudioJob?.cancel()
                 vadStateJob?.cancel()
                 transcriptionResultJob?.cancel()

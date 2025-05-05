@@ -21,7 +21,7 @@ class S2T(private val context: Context) {
     private val TAG: String = "S2T"
 
     // whisper-tiny.tflite and whisper-base-nooptim.en.tflite works well
-    private val DEFAULT_MODEL_TO_USE: String = "whisper-tiny.tflite"
+    private val DEFAULT_MODEL_TO_USE: String = "whisper-base.en.tflite"
     // English only model ends with extension ".en.tflite"
     private val ENGLISH_ONLY_MODEL_EXTENSION: String = ".en.tflite"
     private val ENGLISH_ONLY_VOCAB_FILE: String = "filters_vocab_en.bin"
@@ -62,7 +62,7 @@ class S2T(private val context: Context) {
         // Initialize default model to use
         selectedTfliteFile = File(sdcardDataFolder, DEFAULT_MODEL_TO_USE)
 
-        val isMultilingualModel = true//!(selectedTfliteFile!!.name.endsWith(ENGLISH_ONLY_MODEL_EXTENSION))
+        val isMultilingualModel = false//!(selectedTfliteFile!!.name.endsWith(ENGLISH_ONLY_MODEL_EXTENSION))
         val vocabFileName =
             if (isMultilingualModel) MULTILINGUAL_VOCAB_FILE else ENGLISH_ONLY_VOCAB_FILE
         val vocabFile = File(sdcardDataFolder, vocabFileName)
@@ -111,7 +111,6 @@ class S2T(private val context: Context) {
                 return@launch
             }
 
-            if (recorder.state.value != RecorderState.Ready) {
                 Log.d(TAG, "Preparing recorder...")
                 recorder.prepare()
                 try {
@@ -130,7 +129,6 @@ class S2T(private val context: Context) {
                         }
                     return@launch
                 }
-            }
 
             Log.d(TAG, "Starting streaming...")
 
@@ -177,6 +175,7 @@ class S2T(private val context: Context) {
             recorder.stop()
             audioCollectionJob?.cancel()
             audioCollectionJob = null
+            mVad?.reset()
         }
     }
 

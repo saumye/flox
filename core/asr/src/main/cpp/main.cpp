@@ -6,9 +6,9 @@ int main() {
     bool isMultilingual = false;
 
     // Load the TFLite model and vocabulary
-    const char* modelPath = "../../assets/whisper-tiny-en.tflite";
+    const char* modelPath = "../../assets/whisper-base.en.tflite";
     if (isMultilingual) {
-        modelPath = "../../assets/whisper-tiny.tflite";
+        modelPath = "../../assets/whisper-base.en.tflite";
     }
 
     int result = engine.loadModel(modelPath, isMultilingual);

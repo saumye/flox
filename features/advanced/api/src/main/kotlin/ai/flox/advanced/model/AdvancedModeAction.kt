@@ -77,10 +77,6 @@ sealed interface AdvancedModeAction : Action {
         override val componentIdentifier: ComponentIdentifier = Close
     }
 
-    data class ToggleOnlineMode(val isOnline: Boolean, val conversation: String) : Action.UI.InputEvent, AdvancedModeAction {
-        override val componentIdentifier: ComponentIdentifier = Settings
-    }
-
     data class SetIdleState(val isIdle: Boolean, val source: String) : Action.UI.RenderEvent, AdvancedModeAction {
         override val componentIdentifier: ComponentIdentifier = Visualisation
     }

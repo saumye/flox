@@ -89,12 +89,16 @@ class S2TAudioRecorder(
     // Counters for tracking periodic data emission
     private var readDataCount = 0
     private var vadReadDataCount = 0
+    private var speechSilenceCounter = 0
     
     // Flag to prevent multiple simultaneous read operations
     private var isReading = AtomicBoolean(false)
     
     // Flag to indicate if we should stop
     private var shouldStop = AtomicBoolean(false)
+    
+    // Constants for speech detection debouncing
+    private val SPEECH_SILENCE_DEBOUNCE_FRAMES = 2
     
     init {
         Log.d(TAG, "VAD integration enabled: ${vad != null}")
@@ -119,7 +123,7 @@ class S2TAudioRecorder(
     /**
      * Reads data from AudioRecord buffer and processes it
      */
-    private fun   readDataFromBuffer() {
+    private fun readDataFromBuffer() {
         if (isReading.getAndSet(true)) {
             return  // Another read is in progress
         }
@@ -145,11 +149,36 @@ class S2TAudioRecorder(
                 vadReadDataCount++
                 if (vadReadDataCount >= config.vadTimerIntervalMs / config.listenerTimerIntervalMs) {
                     vad?.let {
+                        val prevSpeechDetected = _isSpeechDetected.value
+                        
+                        // Run VAD on the current audio chunk
                         it.acceptWaveform(currentChunk)
                         val currentlySpeaking = it.isSpeechDetected()
-                        if (currentlySpeaking != _isSpeechDetected.value) {
-                            Log.d(TAG, "VAD state changed: $currentlySpeaking")
-                            _isSpeechDetected.value = currentlySpeaking
+                        
+                        // Apply debouncing for false negatives
+                        // If we were previously speaking, require multiple consecutive negative detections
+                        if (prevSpeechDetected && !currentlySpeaking) {
+                            // Count consecutive non-speech frames before changing state
+                            speechSilenceCounter++
+                            
+                            // Only change state after enough silent frames (debouncing)
+                            if (speechSilenceCounter >= SPEECH_SILENCE_DEBOUNCE_FRAMES) {
+                                Log.d(TAG, "VAD state changed to silent after debounce: $currentlySpeaking")
+                                _isSpeechDetected.value = false
+                                speechSilenceCounter = 0
+                            } else {
+                                // Still in debounce period, maintain speaking state
+                                Log.v(TAG, "VAD debouncing silence: $speechSilenceCounter/$SPEECH_SILENCE_DEBOUNCE_FRAMES")
+                            }
+                        } else if (!prevSpeechDetected && currentlySpeaking) {
+                            // For transition to speaking, respond immediately
+                            Log.d(TAG, "VAD state changed to speaking: $currentlySpeaking")
+                            _isSpeechDetected.value = true
+                            speechSilenceCounter = 0
+                        } else if (currentlySpeaking) {
+                            speechSilenceCounter = 0
+                        } else {
+
                         }
                     }
                     vadReadDataCount = 0
@@ -243,6 +272,7 @@ class S2TAudioRecorder(
                 // Reset counters and buffers
                 readDataCount = 0
                 vadReadDataCount = 0
+                speechSilenceCounter = 0
                 whisperBuffer.clear()
                 shouldStop.set(false)
                 

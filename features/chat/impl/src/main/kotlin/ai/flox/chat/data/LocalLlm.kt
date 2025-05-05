@@ -38,32 +38,38 @@ class LocalLlm @Inject constructor(
     private val temperature = 1.0f
     private val smolLM = SmolLM()
     private lateinit var modelPath: String
-    
+
     // Define sentence delimiters
     private val sentenceDelimiters = listOf('.', '!', '?')
-    
+
     // Maximum number of sentences to collect
     private val maxSentences = 3
 
     init {
-        CoroutineScope(Dispatchers.IO).launch {
+        CoroutineScope(Dispatchers.Default).launch {
             try {
                 // Create model file in app's internal storage
                 val modelFile = File(context.filesDir, modelFileName)
-                
+
                 // If the model doesn't exist in internal storage, copy it from sdcard
                 if (!modelFile.exists()) {
                     val sdcardModelFile = File("/sdcard/$modelFileName")
                     if (sdcardModelFile.exists()) {
                         copyModelToInternalStorage(sdcardModelFile, modelFile)
-                        Log.d(TAG, "Model copied from SDCard to internal storage: ${modelFile.absolutePath}")
+                        Log.d(
+                            TAG,
+                            "Model copied from SDCard to internal storage: ${modelFile.absolutePath}"
+                        )
                     } else {
-                        Log.e(TAG, "Model file not found in SDCard: ${sdcardModelFile.absolutePath}")
+                        Log.e(
+                            TAG,
+                            "Model file not found in SDCard: ${sdcardModelFile.absolutePath}"
+                        )
                     }
                 }
-                
+
                 modelPath = modelFile.absolutePath
-                
+
                 // Initialize the model
                 smolLM.close()
                 smolLM.create(modelPath, minP, temperature, storeChats = true, contextSize = 0)
@@ -88,89 +94,55 @@ class LocalLlm @Inject constructor(
     }
 
     suspend fun completions(request: ChatMessage): NetworkResource<CompletionsResponse> {
-        // Simulate network delay
-        delay(800)
         Log.d(TAG, "Received request: $request in LocalLlm")
-        
-        // Fall back to predefined responses if model isn't ready or for specific patterns
-        val prompt = request.message.lowercase()
-        val fallbackResponse = when {
-            prompt.contains("hello") || prompt.contains("hi") -> 
-                "Hello! I'm in offline mode right now. I have limited capabilities."
-            
-            prompt.contains("help") -> 
-                "I'm running in offline mode with basic functionality. For full features, please switch to online mode."
-            
-            prompt.contains("weather") || prompt.contains("forecast") -> 
-                "I can't check the weather while in offline mode."
-            
-            prompt.contains("time") || prompt.contains("date") -> 
-                "It's currently ${Date(System.currentTimeMillis())}. Note that I'm running in offline mode."
-            
-            prompt.contains("offline") || prompt.contains("mode") -> 
-                "Yes, I'm currently running in offline mode with limited capabilities."
-            
-            prompt.contains("how are you") || prompt.contains("feeling") -> 
-                "I'm operating in offline mode, but I'm functioning well within my limitations. How are you?"
-                
-            prompt.length < 10 ->
-                "I received your short message. I'm currently in offline mode with limited response capabilities."
-                
-            else -> null
-        }
 
-        val response = if (fallbackResponse != null) {
-            fallbackResponse
-        } else {
+        val response = try {
+            // Use StringBuilder to accumulate tokens
+            val responseBuilder = StringBuilder()
+            var sentenceCount = 0
+
+            smolLM.getResponse(request.message)
+                .takeWhile { token ->
+                    // Accumulate the token
+                    responseBuilder.append(token)
+
+                    // Get current text
+                    val text = responseBuilder.toString()
+
+                    // Count sentences by checking delimiters
+                    val currentSentenceCount = countSentences(text)
+
+                    // Update sentence count
+                    sentenceCount = currentSentenceCount
+
+                    // Continue collecting if we haven't reached max sentences
+                    sentenceCount < maxSentences
+                }
+                .collect { token ->
+                    Log.d(TAG, "Token: $token")
+                }
+
+            // Get the text with up to maxSentences sentences
+            val fullText = responseBuilder.toString().trim()
+            val limitedText = if (sentenceCount > 0) {
+                // Extract up to maxSentences sentences
+                extractSentences(fullText, maxSentences)
+            } else {
+                // Use the complete text if no full sentence was found
+                fullText
+            }
+
+            Log.d(TAG, "Generated response: $limitedText")
+            limitedText
+        } catch (e: Exception) {
+            Log.e(TAG, "Error generating response", e)
+            "I encountered an error while processing your request in offline mode."
+        } finally {
+            // Stop the completion to release resources
             try {
-                // Use StringBuilder to accumulate tokens
-                val responseBuilder = StringBuilder()
-                var sentenceCount = 0
-                
-                smolLM.getResponse(request.message)
-                    .takeWhile { token ->
-                        // Accumulate the token
-                        responseBuilder.append(token)
-                        
-                        // Get current text
-                        val text = responseBuilder.toString()
-                        
-                        // Count sentences by checking delimiters
-                        val currentSentenceCount = countSentences(text)
-                        
-                        // Update sentence count
-                        sentenceCount = currentSentenceCount
-                        
-                        // Continue collecting if we haven't reached max sentences
-                        sentenceCount < maxSentences
-                    }
-                    .collect { token ->
-                        Log.d(TAG, "Token: $token")
-                    }
-                
-                // Get the text with up to maxSentences sentences
-                val fullText = responseBuilder.toString().trim()
-                val limitedText = if (sentenceCount > 0) {
-                    // Extract up to maxSentences sentences
-                    extractSentences(fullText, maxSentences)
-                } else {
-                    // Use the complete text if no full sentence was found
-                    fullText
-                }
-                
-                Log.d(TAG, "Generated response: $limitedText")
-                limitedText
+                smolLM.close()
             } catch (e: Exception) {
-                Log.e(TAG, "Error generating response", e)
-                "I encountered an error while processing your request in offline mode."
-            } finally {
-                // Stop the completion to release resources
-                try {
-                    smolLM.close()
-                    smolLM.create(modelPath, minP, temperature, storeChats = true, contextSize = 0)
-                } catch (e: Exception) {
-                    Log.e(TAG, "Error resetting model", e)
-                }
+                Log.e(TAG, "Error resetting model", e)
             }
         }
 
@@ -185,10 +157,10 @@ class LocalLlm @Inject constructor(
             ),
             created = System.currentTimeMillis().toInt()
         )
-        
+
         return NetworkResource.Success(completionResponse, null)
     }
-    
+
     /**
      * Counts the number of complete sentences in the text.
      * A sentence is considered complete if it ends with one of the sentence delimiters.
@@ -196,33 +168,33 @@ class LocalLlm @Inject constructor(
     private fun countSentences(text: String): Int {
         var count = 0
         var startIndex = 0
-        
+
         while (startIndex < text.length) {
             // Find the next delimiter
-            val nextDelimiterIndices = sentenceDelimiters.map { 
+            val nextDelimiterIndices = sentenceDelimiters.map {
                 text.indexOf(it, startIndex)
             }.filter { it >= 0 }
-            
+
             if (nextDelimiterIndices.isEmpty()) {
                 // No more delimiters found
                 break
             }
-            
+
             // Move to the position after the delimiter
             startIndex = nextDelimiterIndices.minOrNull()!! + 1
             count++
         }
-        
+
         return count
     }
-    
+
     /**
      * Extracts up to the specified number of sentences from the text.
      */
     private fun extractSentences(text: String, maxCount: Int): String {
         var count = 0
         var lastIndex = 0
-        
+
         for (i in text.indices) {
             if (i < text.length && sentenceDelimiters.contains(text[i])) {
                 count++
@@ -232,7 +204,7 @@ class LocalLlm @Inject constructor(
                 }
             }
         }
-        
+
         return if (lastIndex > 0) {
             text.substring(0, lastIndex).trim()
         } else {

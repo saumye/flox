@@ -35,10 +35,9 @@ object ChatModule {
     fun provideChatRepository(
         openAIService: OpenAIService,
         localLlm: LocalLlm,
-        chatDAO: ChatDAO,
-        @ApplicationContext context: Context
+        chatDAO: ChatDAO
     ): ChatRepository {
-        return ChatRepository(openAIService, localLlm, chatDAO, context)
+        return ChatRepository(openAIService, localLlm, chatDAO)
     }
 
     @Provides

@@ -27,8 +27,7 @@ import javax.inject.Inject
 class ChatRepository @Inject constructor(
     private val openAIService: OpenAIService,
     private val localLlm: LocalLlm,
-    private val chatDAO: ChatDAO,
-    @ApplicationContext private val application: Context
+    private val chatDAO: ChatDAO
 ) {
     private val TAG: String = "ChatRepository"
 

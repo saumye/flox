@@ -4,6 +4,7 @@ import ai.flox.advanced.AudioPlaybackVisualizer
 import ai.flox.advanced.model.AdvancedModeAction
 import ai.flox.advanced.model.AdvancedModeState
 import ai.flox.arch.Store
+import ai.flox.chat.model.ChatAction
 import ai.flox.chat.model.ChatMessage.Companion.USER_ID_AI
 import ai.flox.chat.model.ChatMessage.Companion.USER_ID_SELF
 import ai.flox.state.Action
@@ -34,6 +35,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -66,13 +68,13 @@ fun AdvancedModeScreen(
     val audioTrackRef = remember { mutableStateOf<AudioTrack?>(null) }
 
     ConstraintLayout(modifier = Modifier.fillMaxSize()) {
-        val (onlineToggle, onlineIcon, closeButton, voiceWaves, inputContent, outputContent ) = createRefs()
+        val (onlineToggle, onlineIcon, modelName, closeButton, voiceWaves, inputContent, outputContent) = createRefs()
 
         // Online/Offline toggle with icon
         Switch(
             checked = state.isOnlineMode,
             onCheckedChange = { isOnline ->
-                store.dispatch(AdvancedModeAction.ToggleOnlineMode(isOnline, conversation))
+                store.dispatch(ChatAction.ToggleOnlineMode(isOnline, conversation))
             },
             modifier = Modifier
                 .constrainAs(onlineToggle) {
@@ -92,6 +94,21 @@ fun AdvancedModeScreen(
                     start.linkTo(onlineToggle.end, 8.dp)
                 }
                 .size(24.dp)
+        )
+        
+        // Model name in center
+        Text(
+            text = if (state.isOnlineMode) "OpenAI" else "Local LLM",
+            color = MaterialTheme.colorScheme.onBackground,
+            fontWeight = FontWeight.Bold,
+            fontSize = 18.sp,
+            textAlign = TextAlign.Center,
+            modifier = Modifier
+                .constrainAs(modelName) {
+                    top.linkTo(parent.top, 16.dp)
+                    start.linkTo(parent.start)
+                    end.linkTo(parent.end)
+                }
         )
 
         // Close button

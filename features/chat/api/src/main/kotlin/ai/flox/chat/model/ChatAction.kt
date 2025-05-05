@@ -1,7 +1,9 @@
 package ai.flox.chat.model
 
+import ai.flox.chat.model.ChatIds.toggle
 import ai.flox.conversation.model.Conversation
 import ai.flox.state.Action
+import ai.flox.state.ComponentIdentifier
 import ai.flox.state.Resource
 
 sealed interface ChatAction : Action {
@@ -15,6 +17,11 @@ sealed interface ChatAction : Action {
 
     data class AdvancedMode(val message: String, val conversation: Conversation) : Action.UI.ClickedEvent, ChatAction {
         override val componentIdentifier = ChatIds.RecordMsg
+    }
+
+    data class ToggleOnlineMode(val isOnline: Boolean, val conversation: String) : Action.UI.InputEvent,
+        ChatAction {
+        override val componentIdentifier: ComponentIdentifier = toggle
     }
 
     //Chat
@@ -40,4 +47,5 @@ object ChatIds {
     const val BtnSend = "BtnSend"
     const val RecordMsg = "RecordMsg"
     const val InputText = "InputText"
+    const val toggle = "toggle"
 }
