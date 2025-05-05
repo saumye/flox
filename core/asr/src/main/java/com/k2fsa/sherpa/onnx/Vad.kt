@@ -4,9 +4,9 @@ import android.content.res.AssetManager
 
 data class SileroVadModelConfig(
     var model: String = "silero_vad.onnx",
-    var threshold: Float = 0.4F,
-    var minSilenceDuration: Float = 0.5F,
-    var minSpeechDuration: Float =0.5F,
+    var threshold: Float = 0.6F,
+    var minSilenceDuration: Float = 0.25F,
+    var minSpeechDuration: Float =0.25F,
     var windowSize: Int = 512,
     var maxSpeechDuration: Float = 5.0F,
 )

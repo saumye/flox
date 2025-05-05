@@ -82,7 +82,7 @@ class WhisperEngineJava(
 
     // Internal function to run on background dispatcher
     private suspend fun transcribeBufferInternal(samples: FloatArray): String? {
-         return withContext(Dispatchers.Default) {
+         return withContext(Dispatchers.Unconfined) {
              if (!isInitializedInternal || interpreter == null) {
                 Log.e(TAG, "Engine not initialized, cannot transcribe.")
                 return@withContext null
@@ -135,7 +135,7 @@ class WhisperEngineJava(
          System.arraycopy(samples, 0, inputSamples, 0, copyLength)
 
         // Call the suspend function from WhisperUtil with the ORIGINAL samples and length
-        return whisperUtil.getMelSpectrogram(inputSamples, inputSamples.size, 4) // Use actual samples.size
+        return whisperUtil.getMelSpectrogram(inputSamples, inputSamples.size, 8) // Use actual samples.size
     }
 
     // Keep internal, runs on Default dispatcher via transcribeBufferInternal

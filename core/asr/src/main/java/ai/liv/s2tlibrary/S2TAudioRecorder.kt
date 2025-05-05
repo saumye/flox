@@ -231,7 +231,7 @@ class S2TAudioRecorder(
         _isSpeechDetected.value = false
         vad?.reset()
         
-        withContext(Dispatchers.IO) {
+        withContext(Dispatchers.Unconfined) {
             try {
                 if (ActivityCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
                     throw SecurityException("RECORD_AUDIO permission not granted")
@@ -389,7 +389,7 @@ class S2TAudioRecorder(
         }
         
         // Cancel the scope
-        recorderScope.cancel("Releasing S2TAudioRecorder")
+        // recorderScope.cancel("Releasing S2TAudioRecorder")
         
         // Release the AudioRecord
         try {

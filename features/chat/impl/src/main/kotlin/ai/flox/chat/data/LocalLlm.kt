@@ -108,7 +108,7 @@ class LocalLlm @Inject constructor(
 
                     // Get current text
                     val text = responseBuilder.toString()
-
+                    text.replace('*',' ')
                     // Count sentences by checking delimiters
                     val currentSentenceCount = countSentences(text)
 
@@ -124,6 +124,7 @@ class LocalLlm @Inject constructor(
 
             // Get the text with up to maxSentences sentences
             val fullText = responseBuilder.toString().trim()
+            fullText.replace('*',' ')
             val limitedText = if (sentenceCount > 0) {
                 // Extract up to maxSentences sentences
                 extractSentences(fullText, maxSentences)
@@ -137,13 +138,6 @@ class LocalLlm @Inject constructor(
         } catch (e: Exception) {
             Log.e(TAG, "Error generating response", e)
             "I encountered an error while processing your request in offline mode."
-        } finally {
-            // Stop the completion to release resources
-            try {
-                smolLM.close()
-            } catch (e: Exception) {
-                Log.e(TAG, "Error resetting model", e)
-            }
         }
 
         // Create a response that mimics the OpenAI API response format

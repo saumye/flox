@@ -71,7 +71,6 @@ class AdvancedModeViewModel @Inject constructor(
 
         return when (action) {
             is AdvancedModeAction.RenderAdvancedMode -> {
-                _currentUtteranceText.value = ""
                 _isTtsSpeaking.value = false // Reset TTS state
                 state.copy(
                     // ... (rest of copy)
@@ -89,14 +88,10 @@ class AdvancedModeViewModel @Inject constructor(
                         val message = res.data
                         if(!message.isSelf() && message.conversation.id.equals(state.conversation?.id)) {
                             if (!_isTtsSpeaking.value) {
-                                return state.copy(
-                                    voiceInputState = state.voiceInputState.copy(text = "")
-                                ).withFlowEffect(flowOf(AdvancedModeAction.StartSpeak(res.data.message)))
+                                return state.withFlowEffect(flowOf(AdvancedModeAction.StartSpeak(res.data.message)))
                             } else {
                                 Log.w(TAG, "AI message received but TTS already active, skipping StartSpeak.")
-                                return state.copy(
-                                    voiceInputState = state.voiceInputState.copy(text = "")
-                                ).noEffect() // Still clear user text
+                                return state.noEffect() // Still clear user text
                             }
                         } else {
                             return state.noEffect()
@@ -134,11 +129,10 @@ class AdvancedModeViewModel @Inject constructor(
             is AdvancedModeAction.AssistantOutput -> state.copy(assistantOutputState = state.assistantOutputState.copy(text = action.text)).noEffect()
 
             is AdvancedModeAction.StartRecord -> {
-                _currentUtteranceText.value = ""
                 if (!_isTtsSpeaking.value) {
                     Log.i(TAG, "Starting recording...")
                     state.copy(
-                        voiceInputState = AdvancedModeState.VoiceState(text = "")
+                        voiceInputState = AdvancedModeState.VoiceState(text = _currentUtteranceText.value)
                     ).withFlowEffect(recordMessage())
                 } else {
                     Log.w(TAG, "Ignoring StartRecord because TTS is speaking.")
@@ -152,10 +146,9 @@ class AdvancedModeViewModel @Inject constructor(
                 ).withFlowEffect(merge(flowOf(AdvancedModeAction.AssistantOutput(action.text)), speakMessage(action.text)))
             }
             is AdvancedModeAction.UserInput -> {
-                _currentUtteranceText.value = "" // Clear accumulator
                 // Send message using the repository with the online/offline state
                 state.copy(
-                    voiceInputState = state.voiceInputState.copy(text = "") // Clear display
+                    voiceInputState = state.voiceInputState.copy(text = _currentUtteranceText.value) // Clear display
                 ).withFlowEffect(
                     flowOf(ChatAction.SendMessage(action.text, state.conversation!!))
                 )
@@ -243,24 +236,16 @@ class AdvancedModeViewModel @Inject constructor(
                         Log.d(TAG, "recordMessage: VAD detected speaking: $speaking")
                         if (speaking && speechStartTime < 0) speechStartTime = System.currentTimeMillis()
                     }
-                        .debounce { speaking -> if (speaking) 0L else 1000L } // Emit immediately if speaking, debounce silence by 1s
+                        .debounce { speaking -> if (speaking) 0L else 250L } // Emit immediately if speaking, debounce silence by 1s
                         .filter { !it && speechStartTime >= 0 } // Interested in silence *after* speech started
-                        .take(1) // Only need the first occurrence of end-of-speech
                         .collect { _ ->
                             Log.d(TAG, "recordMessage: VAD detected end of speech.") // Log VAD end detection
                             val finalText = _currentUtteranceText.value.trim()
-                            if (finalText.isNotBlank()) {
-                                Log.i(TAG, "Sending final UserInput: '$finalText'")
-                                trySend(AdvancedModeAction.UserInput(text = finalText))
-                            } else {
-                                Log.i(TAG, "End of speech detected, but no text accumulated.")
-                            }
+                            Log.i(TAG, "Sending final UserInput: '$finalText'")
+                            trySend(AdvancedModeAction.UserInput(text = _currentUtteranceText.value))
                             // Stop recording *after* processing the end of speech
                             Log.d(TAG, "Stopping recording due to VAD end-of-speech")
                             s2t.stopStreaming() // This should trigger awaitClose eventually
-
-                            // Cancel this VAD job as its purpose is fulfilled
-                            this.cancel()
                             speechStartTime = -1 // Reset speech start time
                         }
                 }
@@ -285,9 +270,6 @@ class AdvancedModeViewModel @Inject constructor(
             // Add idle state reset when stopping recording
             awaitClose {
                 Log.d(TAG, "recordMessage Flow closing (awaitClose)") // Log close
-                listenerAudioJob?.cancel()
-                vadStateJob?.cancel()
-                transcriptionResultJob?.cancel()
                 
                 // Set user idle when recording stops
                 trySend(AdvancedModeAction.SetIdleState(true, USER_ID_SELF))

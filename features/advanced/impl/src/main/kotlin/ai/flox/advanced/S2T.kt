@@ -50,7 +50,7 @@ class S2T(private val context: Context) {
     private var sdcardDataFolder: File? = null
 
     // Coroutine scope for managing audio collection
-    private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private val scope = CoroutineScope(Dispatchers.Unconfined + SupervisorJob())
     private var audioCollectionJob: Job? = null
     private var selectedTfliteFile: File? = null
 
@@ -147,7 +147,7 @@ class S2T(private val context: Context) {
                         }
                     }
                 } catch (e: CancellationException) {
-                    Log.i(TAG, "Whisper audio collection job cancelled.")
+                    Log.i(TAG, "Whisper audio collection job cancelled. with exception", e)
                 } catch (e: Exception) {
                     Log.e(TAG, "Error collecting Whisper audio data", e)
                 } finally {
@@ -182,7 +182,7 @@ class S2T(private val context: Context) {
     fun release() {
         Log.d(TAG, "Releasing S2T resources...")
         stopStreaming()
-        scope.cancel("S2T Released")
+        // scope.cancel("S2T Released")
         s2tRecorder?.release()
         mWhisper?.release() // Use release instead of stop
         s2tRecorder = null

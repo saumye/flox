@@ -46,6 +46,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -224,7 +225,7 @@ fun ComposeBox(
                                 dispatchEvent(AdvancedModeAction.RenderAdvancedMode(conversation = conversation))
                             }
                         },
-                    imageVector = ImageVector.vectorResource(R.drawable.ic_mic),
+                    painter = painterResource(R.drawable.waves),
                     contentDescription = "create audio",
                     alignment = Alignment.Center
                 )
