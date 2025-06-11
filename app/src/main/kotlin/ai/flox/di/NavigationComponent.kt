@@ -7,6 +7,8 @@ import ai.flox.advanced.model.AdvancedModeState
 import ai.flox.arch.Store
 import ai.flox.chat.ChatNavigator
 import ai.flox.chat.model.ChatState
+import ai.flox.detail.DetailNavigator
+import ai.flox.detail.model.DetailState
 import ai.flox.home.HomeNavigator
 import ai.flox.home.model.HomeState
 import ai.flox.conversation.ConversationNavigator
@@ -68,6 +70,13 @@ object NavigationComponent {
     @Singleton
     fun provideAdvancedModeRoutes(store: Store<State, Action>): Navigable {
         return AdvancedModeNavigator(store, store.state.map(CoroutineScope(Dispatchers.Main)) { if(it is AppState) it.featureStates[AdvancedModeState.stateKey] as AdvancedModeState else AdvancedModeState() })
+    }
+
+    @Provides
+    @IntoSet
+    @Singleton
+    fun provideDetailRoutes(store: Store<State, Action>): Navigable {
+        return DetailNavigator(store, store.state.map(CoroutineScope(Dispatchers.Main)) { if(it is AppState) it.featureStates[DetailState.stateKey] as DetailState else DetailState() })
     }
 
     fun <T, M> StateFlow<T>.map(

@@ -31,6 +31,8 @@ dependencies {
     implementation(project(":features:home:impl"))
     implementation(project(":features:advanced:api"))
     implementation(project(":features:advanced:impl"))
+    implementation(project(":features:detail:api"))
+    implementation(project(":features:detail:impl"))
     implementation(project(":core:storage"))
     implementation(project(":core:base"))
 }

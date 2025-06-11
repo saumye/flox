@@ -78,7 +78,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun HomeScreen(
     stateFlow: StateFlow<HomeState>,
-    store: Store<State, Action>
+    store: Store<State, Action>,
 ) {
     val state: HomeState by stateFlow.collectAsStateWithLifecycle()
     val coroutineScope = rememberCoroutineScope()
@@ -132,9 +132,10 @@ fun HomeScreen(
                     selectedCategory = null
                 },
                 onArticleClick = { article ->
-                    // Handle article click (e.g., open full article)
+                    // Open full article detail
                     showStoryDialog = false
                     selectedCategory = null
+                    store.dispatch(Action.Navigate(DetailRoutes.DETAIL))
                 },
                 store
             )
@@ -216,7 +217,10 @@ fun HomeScreen(
                 
                 if (categoryNews != null && categoryNews.isNotEmpty()) {
                     // Pass scroll behavior to the news list to enable coordinated scrolling
-                    NewsList(categoryNews.values.toList())
+                    NewsList(
+                        news = categoryNews.values.toList(),
+                        onArticleClick = navigateToDetail
+                    )
                 } else {
                     Box(
                         modifier = Modifier
@@ -349,7 +353,7 @@ fun CategoryPills(
 }
 
 @Composable
-fun NewsList(news: List<NewsItem>) {
+fun NewsList(news: List<NewsItem>, onArticleClick: (NewsItem) -> Unit = {}) {
     val listState = rememberLazyListState()
     
     LazyColumn(
@@ -357,18 +361,18 @@ fun NewsList(news: List<NewsItem>) {
         contentPadding = PaddingValues(16.dp)
     ) {
         items(news) { newsItem ->
-            NewsCard(newsItem)
+            NewsCard(newsItem, onArticleClick)
             Spacer(modifier = Modifier.height(16.dp))
         }
     }
 }
 
 @Composable
-fun NewsCard(newsItem: NewsItem) {
+fun NewsCard(newsItem: NewsItem, onArticleClick: (NewsItem) -> Unit = {}) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { /* Handle news item click */ }
+            .clickable { onArticleClick(newsItem) }
     ) {
         Row(
             modifier = Modifier.fillMaxWidth()

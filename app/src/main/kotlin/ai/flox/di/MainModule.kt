@@ -10,6 +10,7 @@ import ai.flox.arch.Reducer
 import ai.flox.arch.Store
 import ai.flox.arch.createStore
 import ai.flox.chat.model.ChatState
+import ai.flox.detail.model.DetailState
 import ai.flox.home.model.HomeState
 import ai.flox.conversation.model.ConversationState
 import ai.flox.state.Action
@@ -102,6 +103,19 @@ object MainModule {
                             // Put the new AdvancedModeState
                             newFeatureStates[AdvancedModeState.stateKey] = advancedState
                             // Create a new AppState with the new feature states map
+                            state.copy(featureStates = newFeatureStates)
+                        },
+                    ),
+                    PullbackReducer(
+                        innerReducer = reducers[DetailState.stateKey] as Reducer<DetailState, Action>,
+                        mapToChildAction = { action -> action },
+                        mapToChildState = { state -> 
+                            state.featureStates[DetailState.stateKey] as? DetailState ?: DetailState()
+                        },
+                        mapToParentAction = { action -> action },
+                        mapToParentState = { state, detailState ->
+                            val newFeatureStates = state.featureStates.toMutableMap()
+                            newFeatureStates[DetailState.stateKey] = detailState
                             state.copy(featureStates = newFeatureStates)
                         },
                     )
