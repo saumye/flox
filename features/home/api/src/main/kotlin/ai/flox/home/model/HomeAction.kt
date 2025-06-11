@@ -17,6 +17,11 @@ sealed interface HomeAction : Action {
         override val componentIdentifier = HomeIds.TopStories
     }
 
+    data class StartSpeak(val text: String) : Action.UI.InputEvent,
+        HomeAction {
+        override val componentIdentifier: ComponentIdentifier = HomeIds.TopStories
+    }
+
     // Articles/News
     data class CreateOrUpdateArticles(override val resource: Resource<List<NewsItem>>) :
         Action.Data.LoadData<List<NewsItem>>, HomeAction

@@ -14,6 +14,7 @@ dependencies {
     implementation(project(":core:storage"))
     implementation(project(":core:network"))
     implementation(project(":core:base"))
+    implementation(project(":core:tts"))
     
     // Add accompanist pager for swipeable tabs
     implementation("com.google.accompanist:accompanist-pager:0.28.0")

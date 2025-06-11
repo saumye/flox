@@ -8,7 +8,6 @@ import ai.flox.home.model.NewsItem
 import ai.flox.state.Action
 import ai.flox.state.State
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
@@ -31,7 +30,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Face
@@ -44,7 +42,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.ScrollableTabRow
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRowDefaults
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
@@ -53,7 +50,6 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -87,6 +83,10 @@ fun HomeScreen(
     val state: HomeState by stateFlow.collectAsStateWithLifecycle()
     val coroutineScope = rememberCoroutineScope()
     
+    // State to control Story dialog visibility
+    var showStoryDialog by remember { mutableStateOf(false) }
+    var selectedCategory by remember { mutableStateOf<NewsCategory?>(null) }
+    
     // Load initial data
     LaunchedEffect(Unit) {
         store.dispatch(HomeAction.RecentNewsRendered)
@@ -117,6 +117,27 @@ fun HomeScreen(
         val category = state.categories.getOrNull(pagerState.currentPage) ?: return@LaunchedEffect
         if (category != state.selectedCategory) {
             store.dispatch(HomeAction.SelectCategory(category))
+        }
+    }
+    
+    // Show Story Dialog if a category is selected
+    if (showStoryDialog && selectedCategory != null) {
+        val articlesForCategory = state.categorizedNews[selectedCategory]?.values?.toList() ?: emptyList()
+        if (articlesForCategory.isNotEmpty()) {
+            StoryDialog(
+                category = selectedCategory!!,
+                articles = articlesForCategory,
+                onDismiss = { 
+                    showStoryDialog = false 
+                    selectedCategory = null
+                },
+                onArticleClick = { article ->
+                    // Handle article click (e.g., open full article)
+                    showStoryDialog = false
+                    selectedCategory = null
+                },
+                store
+            )
         }
     }
     
@@ -162,13 +183,9 @@ fun HomeScreen(
                 CategoryStoryCircles(
                     categories = state.categories,
                     onCategorySelected = { category ->
-                        coroutineScope.launch {
-                            val index = state.categories.indexOf(category)
-                            if (index >= 0) {
-                                pagerState.scrollToPage(index)
-                            }
-                            store.dispatch(HomeAction.SelectCategory(category))
-                        }
+                        // Show story view when a category is clicked
+                        selectedCategory = category
+                        showStoryDialog = true
                     }
                 )
             }

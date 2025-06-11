@@ -10,9 +10,11 @@ import ai.flox.network.openai.OpenAIService
 import ai.flox.state.State
 import ai.flox.storage.chat.ChatDAO
 import ai.flox.storage.news.NewsDAO
+import android.content.Context
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
+import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import dagger.multibindings.IntoMap
 import dagger.multibindings.StringKey
@@ -32,8 +34,8 @@ object HomeModule {
     @Provides
     @IntoMap
     @StringKey(HomeState.stateKey)
-    fun provideReducer(newsRepository: NewsRepository): Reducer<*, *> {
-        return HomeScreenViewModel(newsRepository)
+    fun provideReducer(@ApplicationContext context: Context, newsRepository: NewsRepository): Reducer<*, *> {
+        return HomeScreenViewModel(newsRepository, context)
     }
 
     @Provides
