@@ -1,5 +1,6 @@
 package ai.flox.home.data
 
+import ai.flox.home.model.NewsCategory
 import ai.flox.home.model.NewsItem
 import ai.flox.network.newsapi.models.Article
 import ai.flox.storage.news.NewsArticleEntity
@@ -10,17 +11,21 @@ import java.util.UUID
 
 val dateConvertor = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssX", Locale.US)
 
-fun Article.toDomain() = NewsItem(
+fun Article.toDomain(category: String = "general") = NewsItem(
     title = this.title, description = this.description, source = this.source?.name,
-    url = this.url, urlToImage = this.urlToImage, publishedAt = dateConvertor.parse(publishedAt) ?: Date(System.currentTimeMillis())
+    url = this.url, urlToImage = this.urlToImage, publishedAt = dateConvertor.parse(publishedAt) ?: Date(System.currentTimeMillis()),
+    category = NewsCategory.fromApiValue(category)
 )
 
 fun NewsArticleEntity.toDomain() = NewsItem(
     title = this.title, description = this.description, source = this.source,
-    url = this.url, urlToImage = this.urlToImage, publishedAt = publishedAt?.let { Date(it) } ?:Date(System.currentTimeMillis())
+    url = this.url, urlToImage = this.urlToImage, publishedAt = publishedAt?.let { Date(it) } ?:Date(System.currentTimeMillis()),
+    category = NewsCategory.fromApiValue(this.category),
+    id = this.id
 )
 
 fun NewsItem.toLocal() = NewsArticleEntity(
     title = this.title, description = this.description, source = this.source, publishedAt = publishedAt?.time,
-    url = this.url, urlToImage = this.urlToImage, id = UUID.randomUUID().toString()
+    url = this.url, urlToImage = this.urlToImage, category = this.category.apiValue,
+    id = this.id
 )

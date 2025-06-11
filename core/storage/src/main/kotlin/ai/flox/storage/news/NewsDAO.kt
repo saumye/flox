@@ -10,8 +10,14 @@ import androidx.room.Update
 
 @Dao
 interface NewsDAO : BaseDAO {
-    @Query("SELECT * FROM article")
+    @Query("SELECT * FROM article ORDER BY publishedAt DESC")
     suspend fun getAll(): List<NewsArticleEntity>
+    
+    @Query("SELECT * FROM article WHERE category = :category ORDER BY publishedAt DESC")
+    suspend fun getByCategory(category: String): List<NewsArticleEntity>
+    
+    @Query("SELECT * FROM article ORDER BY publishedAt DESC LIMIT 5")
+    suspend fun getTopStories(): List<NewsArticleEntity>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertOrUpdate(vararg news: NewsArticleEntity)

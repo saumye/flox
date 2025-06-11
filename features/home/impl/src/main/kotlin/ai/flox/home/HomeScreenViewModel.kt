@@ -8,6 +8,7 @@ import ai.flox.arch.withFlowEffect
 import ai.flox.home.data.NewsRepository
 import ai.flox.home.model.HomeAction
 import ai.flox.home.model.HomeState
+import ai.flox.home.model.NewsCategory
 import ai.flox.home.model.NewsItem
 import ai.flox.state.Action
 import ai.flox.state.Resource
@@ -32,11 +33,46 @@ class HomeScreenViewModel @Inject constructor(
             is HomeAction.RecentNewsRendered -> {
                 state.withFlowEffect(merge(newsRepository.refreshNews(), newsRepository.getNews()))
             }
+            
+            is HomeAction.SelectCategory -> {
+                val newState = state.copy(selectedCategory = action.category)
+                newState.withFlowEffect(
+                    merge(
+                        newsRepository.refreshNewsByCategory(action.category),
+                        newsRepository.getNewsByCategory(action.category)
+                    )
+                )
+            }
+            
+            is HomeAction.LoadTopStories -> {
+                state.withFlowEffect(newsRepository.getTopStories())
+            }
 
             is HomeAction.LoadArticles -> {
                 if (action.resource is Resource.Success) {
                     val res = action.resource as Resource.Success<List<NewsItem>>
                     state.copy(recentNewsList = res.data.associateBy { msg -> msg.id }).noEffect()
+                } else {
+                    state.noEffect()
+                }
+            }
+            
+            is HomeAction.LoadCategoryArticles -> {
+                if (action.resource is Resource.Success) {
+                    val res = action.resource as Resource.Success<List<NewsItem>>
+                    val category = action.category
+                    val currentCategorizedNews = state.categorizedNews.toMutableMap()
+                    currentCategorizedNews[category] = res.data.associateBy { it.id }
+                    state.copy(categorizedNews = currentCategorizedNews).noEffect()
+                } else {
+                    state.noEffect()
+                }
+            }
+            
+            is HomeAction.LoadTopStoriesArticles -> {
+                if (action.resource is Resource.Success) {
+                    val res = action.resource as Resource.Success<List<NewsItem>>
+                    state.copy(topStories = res.data.associateBy { it.id }).noEffect()
                 } else {
                     state.noEffect()
                 }

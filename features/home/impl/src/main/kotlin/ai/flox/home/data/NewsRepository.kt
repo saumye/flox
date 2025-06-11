@@ -1,6 +1,7 @@
 package ai.flox.home.data
 
 import ai.flox.home.model.HomeAction
+import ai.flox.home.model.NewsCategory
 import ai.flox.network.NetworkResource
 import ai.flox.network.newsapi.NewsService
 import ai.flox.state.Resource
@@ -36,6 +37,46 @@ class NewsRepository @Inject constructor(
             emit(HomeAction.LoadArticles(Resource.Success(newsDAO.getAll().map { it.toDomain() })))
         }.flowOn(Dispatchers.IO).catch {
             emit(HomeAction.LoadArticles(Resource.Failure(Exception(it))))
+        }
+    }
+    
+    fun refreshNewsByCategory(category: NewsCategory): Flow<HomeAction> {
+        return flow {
+            val headlines = newsService.headlinesByCategory(category.apiValue)
+            if (headlines is NetworkResource.Success) {
+                headlines.data?.let { topHeadlinesResponse ->
+                    for (headline in topHeadlinesResponse.articles) {
+                        newsDAO.insertOrUpdate(headline.toDomain(category.apiValue).toLocal())
+                    }
+                    emit(HomeAction.LoadCategoryArticles(
+                        category,
+                        Resource.Success(topHeadlinesResponse.articles.map { it.toDomain(category.apiValue) })
+                    ))
+                }
+            }
+        }.flowOn(Dispatchers.IO).catch {
+            emit(HomeAction.LoadCategoryArticles(category, Resource.Failure(Exception(it))))
+        }
+    }
+    
+    fun getNewsByCategory(category: NewsCategory): Flow<HomeAction> {
+        return flow {
+            emit(HomeAction.LoadCategoryArticles(
+                category,
+                Resource.Success(newsDAO.getByCategory(category.apiValue).map { it.toDomain() })
+            ))
+        }.flowOn(Dispatchers.IO).catch {
+            emit(HomeAction.LoadCategoryArticles(category, Resource.Failure(Exception(it))))
+        }
+    }
+    
+    fun getTopStories(): Flow<HomeAction> {
+        return flow {
+            emit(HomeAction.LoadTopStoriesArticles(
+                Resource.Success(newsDAO.getTopStories().map { it.toDomain() })
+            ))
+        }.flowOn(Dispatchers.IO).catch {
+            emit(HomeAction.LoadTopStoriesArticles(Resource.Failure(Exception(it))))
         }
     }
 }

@@ -4,7 +4,7 @@ import ai.flox.Navigable
 import ai.flox.arch.Store
 import ai.flox.home.model.HomeAction
 import ai.flox.home.model.HomeState
-import ai.flox.home.ui.NewsListScreen
+import ai.flox.home.ui.HomeScreen
 import ai.flox.state.Action
 import ai.flox.state.State
 import androidx.compose.ui.Modifier
@@ -26,7 +26,7 @@ class HomeNavigator(
         modifier: Modifier
     ) {
         navGraphBuilder.composable(HomeRoutes.home) {
-            NewsListScreen(state, store)
+            HomeScreen(state, store)
         }
     }
 }

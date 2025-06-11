@@ -23,6 +23,9 @@ data class NewsArticleEntity(
     @ColumnInfo(name = "publishedAt")
     val publishedAt: Long? = null,
 
+    @ColumnInfo(name = "category")
+    val category: String = "general",
+
     @ColumnInfo(name = "id")
     val id: String,
 )

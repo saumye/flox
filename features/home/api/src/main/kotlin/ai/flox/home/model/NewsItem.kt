@@ -10,5 +10,6 @@ data class NewsItem(
     val url: String,
     val urlToImage: String? = null,
     val publishedAt: Date? = null,
+    val category: NewsCategory = NewsCategory.TOP,
     val id: String = UUID.randomUUID().toString(),
 )

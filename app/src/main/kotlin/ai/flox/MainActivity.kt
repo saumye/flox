@@ -14,7 +14,6 @@ import ai.flox.model.AppIds.topBarIcon
 import ai.flox.state.Action
 import ai.flox.state.Resource
 import ai.flox.state.State
-import ai.flox.ui.BottomBar
 import ai.flox.ui.theme.FloxTheme
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -36,7 +35,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
@@ -56,14 +54,6 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var routes: Set<@JvmSuppressWildcards Navigable>
 
-    @Composable
-    fun showBottomBar(navController: NavHostController): Boolean {
-        val navBackStackEntry by navController.currentBackStackEntryAsState()
-        return navBackStackEntry?.destination?.route?.let {
-            BottomTab.belongs(it)
-        } ?: false
-    }
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val appState: StateFlow<AppState> =
@@ -73,17 +63,7 @@ class MainActivity : ComponentActivity() {
             val navController = rememberNavController()
             navigationReducer.appNavController = navController
             FloxTheme {
-                Scaffold(
-                    bottomBar = {
-                        if (showBottomBar(navController)) {
-                            BottomBar(
-                                state.bottomBarState.bottomTabs,
-                                navController,
-                                store::dispatch
-                            )
-                        }
-                    }
-                ) { innerPadding ->
+                Scaffold { innerPadding ->
                     Column(
                         modifier = Modifier.padding(innerPadding),
                         verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -93,7 +73,7 @@ class MainActivity : ComponentActivity() {
                             startDestination = HomeRoutes.home
                         ) {
                             for (route in routes) {
-                                register(route, navController, Modifier.padding(innerPadding))
+                                register(route, navController, Modifier)
                             }
                         }
                     }

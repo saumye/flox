@@ -28,13 +28,29 @@ class NewsService @Inject constructor(
             try {
                 val res = newsAPI.headlines(
                     apiKey = BuildConfig.NEWSAPI_KEY,
-                    country ="us",
-                    phrase = "AI",
-                    category ="technology"
+                    country = "us",
+                    phrase = "",
+                    category = "general"
                 )
                 NetworkResource.Success(res.body(), null)
             } catch (ex: Exception) {
                 // TODO: Handle all kinds of failures
+                NetworkResource.Failure(NetworkException.fromException(ex))
+            }
+        }
+    }
+    
+    suspend fun headlinesByCategory(category: String): NetworkResource<out TopHeadlinesResponse> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val res = newsAPI.headlines(
+                    apiKey = BuildConfig.NEWSAPI_KEY,
+                    country = "us",
+                    phrase = "",
+                    category = category
+                )
+                NetworkResource.Success(res.body(), null)
+            } catch (ex: Exception) {
                 NetworkResource.Failure(NetworkException.fromException(ex))
             }
         }
