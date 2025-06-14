@@ -13,7 +13,7 @@ val dateConvertor = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssX", Locale.US)
 
 fun Article.toDomain(category: String = "general") = NewsItem(
     title = this.title, description = this.description, source = this.source?.name,
-    url = this.url, urlToImage = this.urlToImage, publishedAt = dateConvertor.parse(publishedAt) ?: Date(System.currentTimeMillis()),
+    url = this.url, urlToImage = this.image, publishedAt = dateConvertor.parse(publishedAt) ?: Date(System.currentTimeMillis()),
     category = NewsCategory.fromApiValue(category)
 )
 

@@ -42,7 +42,7 @@ class NewsRepository @Inject constructor(
     
     fun refreshNewsByCategory(category: NewsCategory): Flow<HomeAction> {
         return flow {
-            val headlines = newsService.headlinesByCategory(category.apiValue)
+            val headlines = newsService.headlines(category=category.apiValue)
             if (headlines is NetworkResource.Success) {
                 headlines.data?.let { topHeadlinesResponse ->
                     for (headline in topHeadlinesResponse.articles) {

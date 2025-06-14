@@ -8,11 +8,8 @@ data class TopHeadlinesResponse(
     @field:Json(name = "articles")
     val articles: List<Article>,
 
-    @field:Json(name = "status")
-    val status: String,
-
-    @field:Json(name = "totalResults")
-    val results: Int
+    @field:Json(name = "totalArticles")
+    val totalArticles: Int
 )
 
 @JsonClass(generateAdapter = true)
@@ -23,24 +20,27 @@ data class Article(
     @field:Json(name = "description")
     val description: String? = null,
 
+    @field:Json(name = "content")
+    val content: String? = null,
+
     @field:Json(name = "url")
     val url: String,
 
-    @field:Json(name = "urlToImage")
-    val urlToImage: String? = null,
+    @field:Json(name = "image")
+    val image: String? = null,
 
     @field:Json(name = "source")
-    val source: Source? = null,
+    val source: Source,
 
     @field:Json(name = "publishedAt")
-    val publishedAt: String? = null
+    val publishedAt: String
 )
 
 @JsonClass(generateAdapter = true)
 data class Source(
-    @field:Json(name = "id")
-    val id: String? = null,
-
     @field:Json(name = "name")
-    val name: String? = null
+    val name: String,
+
+    @field:Json(name = "url")
+    val url: String
 )

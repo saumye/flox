@@ -7,7 +7,8 @@ import ai.flox.home.model.NewsItem
 import ai.flox.state.Action
 import ai.flox.state.State
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -15,9 +16,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -31,9 +33,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.PointerInputChange
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -98,7 +103,9 @@ fun StoryView(
             // Create the story content for each article
             ArticleStoryContent(
                 article = articles[index],
-                onArticleClick = { onArticleClick(articles[index]) }
+                onArticleClick = { onArticleClick(articles[index]) },
+                onNextClick = { if(index < articles.size-1) onArticleClick(articles[index+1]) },
+                onPreviousClick = { if(index > 0) onArticleClick(articles[index-1]) }
             )
         }
         
@@ -139,6 +146,32 @@ fun StoryView(
                 )
             }
         }
+
+        // Bottom swipe indicator
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 32.dp)
+                .align(Alignment.BottomCenter)
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(
+                    imageVector = Icons.Default.KeyboardArrowDown,
+                    contentDescription = "Swipe up for details",
+                    tint = Color.White,
+                    modifier = Modifier.size(32.dp)
+                )
+                Text(
+                    text = "Swipe up for details",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color.White,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+            }
+        }
     }
     
     // Clean up resources when the story view is dismissed
@@ -152,12 +185,43 @@ fun StoryView(
 @Composable
 fun ArticleStoryContent(
     article: NewsItem,
-    onArticleClick: () -> Unit
+    onArticleClick: () -> Unit,
+    onNextClick: () -> Unit,
+    onPreviousClick: () -> Unit,
 ) {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .clickable(onClick = onArticleClick)
+            .pointerInput(Unit) {
+                val velocityTracker = VelocityTracker()
+                detectDragGestures(
+                    onDragStart = { offset ->
+                        velocityTracker.resetTracking()
+                    },
+                    onDrag = { change: PointerInputChange, dragAmount: Offset ->
+                        velocityTracker.addPosition(change.uptimeMillis, change.position)
+                        change.consume()
+                    },
+                    onDragEnd = {
+                        val velocity = velocityTracker.calculateVelocity()
+                        // If the vertical velocity is significant and upward, trigger the article detail
+                        if (velocity.y < -1000) {
+                            onArticleClick()
+                        }
+                    }
+                )
+                
+                // Handle tap gestures
+                detectTapGestures { offset ->
+                    val screenWidth = size.width
+                    val x = offset.x
+                    if (x < screenWidth / 2) {
+                        onPreviousClick()
+                    } else {
+                        onNextClick()
+                    }
+                }
+            }
     ) {
         // Article image as background
         article.urlToImage?.let { imageUrl ->

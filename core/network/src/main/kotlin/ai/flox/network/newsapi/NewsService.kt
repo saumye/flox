@@ -23,31 +23,46 @@ class NewsService @Inject constructor(
 ) : ApiService() {
     //TODO: Create BaseService with BaseFunctionality
 
-    suspend fun headlines(): NetworkResource<out TopHeadlinesResponse> {
+    suspend fun headlines(
+        country: String = "us",
+        category: String = "general",
+        max: Int = 10,
+        lang: String = "en"
+    ): NetworkResource<out TopHeadlinesResponse> {
         return withContext(Dispatchers.IO) {
             try {
                 val res = newsAPI.headlines(
                     apiKey = BuildConfig.NEWSAPI_KEY,
-                    country = "us",
-                    phrase = "",
-                    category = "general"
+                    country = country,
+                    category = category,
+                    max = max,
+                    lang = lang
                 )
                 NetworkResource.Success(res.body(), null)
             } catch (ex: Exception) {
-                // TODO: Handle all kinds of failures
                 NetworkResource.Failure(NetworkException.fromException(ex))
             }
         }
     }
-    
-    suspend fun headlinesByCategory(category: String): NetworkResource<out TopHeadlinesResponse> {
+
+    suspend fun search(
+        query: String,
+        country: String = "us",
+        max: Int = 10,
+        lang: String = "en",
+        from: String? = null,
+        to: String? = null
+    ): NetworkResource<out TopHeadlinesResponse> {
         return withContext(Dispatchers.IO) {
             try {
-                val res = newsAPI.headlines(
+                val res = newsAPI.search(
                     apiKey = BuildConfig.NEWSAPI_KEY,
-                    country = "us",
-                    phrase = "",
-                    category = category
+                    query = query,
+                    country = country,
+                    max = max,
+                    lang = lang,
+                    from = from,
+                    to = to
                 )
                 NetworkResource.Success(res.body(), null)
             } catch (ex: Exception) {
