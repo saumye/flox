@@ -11,6 +11,7 @@ android {
 
 dependencies {
     implementation(project(":features:home:api"))
+    implementation(project(":features:detail:api"))
     implementation(project(":core:storage"))
     implementation(project(":core:network"))
     implementation(project(":core:base"))

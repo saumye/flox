@@ -10,8 +10,7 @@ import ai.flox.state.Action
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.merge
 
-class DetailReducer(
-    private val repo: NewsRepository
+class DetailViewModel(
 ) : Reducer<DetailState, Action> {
     
     override fun reduce(currentState: DetailState, action: Action): ReduceResult<DetailState, Action> {
@@ -24,13 +23,7 @@ class DetailReducer(
                 currentState.copy(
                     currentArticle = action.newsItem,
                     isLoading = false
-                ).withFlowEffect(
-                        merge(
-                            chatRepository.getChatMessages(action.newsItem), flowOf(
-                                Action.Navigate(route = ChatRoutes.chat)
-                            )
-                        )
-                    )
+                ).withFlowEffect(flowOf(Action.Navigate(route = DetailRoutes.detail)))
             }
             else -> currentState.noEffect()
         }

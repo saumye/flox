@@ -1,6 +1,8 @@
 package ai.flox.home.ui
 
 import ai.flox.arch.Store
+import ai.flox.detail.DetailRoutes
+import ai.flox.detail.model.DetailAction
 import ai.flox.home.model.HomeAction
 import ai.flox.home.model.HomeState
 import ai.flox.home.model.NewsCategory
@@ -135,7 +137,7 @@ fun HomeScreen(
                     // Open full article detail
                     showStoryDialog = false
                     selectedCategory = null
-                    store.dispatch(Action.Navigate(DetailRoutes.DETAIL))
+                    store.dispatch(DetailAction.LoadArticle(article))
                 },
                 store
             )
@@ -215,11 +217,11 @@ fun HomeScreen(
                 val category = state.categories[page]
                 val categoryNews = state.categorizedNews[category]
                 
-                if (categoryNews != null && categoryNews.isNotEmpty()) {
+                if (!categoryNews.isNullOrEmpty()) {
                     // Pass scroll behavior to the news list to enable coordinated scrolling
                     NewsList(
                         news = categoryNews.values.toList(),
-                        onArticleClick = navigateToDetail
+                        onArticleClick = {store.dispatch(DetailAction.LoadArticle(it))}
                     )
                 } else {
                     Box(

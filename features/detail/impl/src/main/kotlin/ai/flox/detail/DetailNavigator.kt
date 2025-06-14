@@ -23,7 +23,7 @@ class DetailNavigator(
     ) {
         navGraphBuilder.composable(DetailRoutes.detail) {
             it.arguments?.getString("newsId")?.let {
-                NewsDetailView(state, store, it)
+                NewsDetailView(state, store)
             }
         }
     }

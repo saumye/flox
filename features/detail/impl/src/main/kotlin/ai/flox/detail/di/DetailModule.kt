@@ -1,7 +1,7 @@
 package ai.flox.detail.di
 
 import ai.flox.arch.Reducer
-import ai.flox.detail.DetailReducer
+import ai.flox.detail.DetailViewModel
 import ai.flox.detail.model.DetailState
 import dagger.Module
 import dagger.Provides
@@ -18,7 +18,7 @@ object DetailModule {
     @IntoMap
     @StringKey(DetailState.stateKey)
     fun provideDetailReducer(): Reducer<*, *> {
-        return DetailReducer()
+        return DetailViewModel()
     }
     
     @Provides
