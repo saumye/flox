@@ -91,8 +91,6 @@ fun HomeScreen(
     
     // Load initial data
     LaunchedEffect(Unit) {
-        store.dispatch(HomeAction.RecentNewsRendered)
-        store.dispatch(HomeAction.LoadTopStories)
         for (category in state.categories) {
             store.dispatch(HomeAction.SelectCategory(category))
         }

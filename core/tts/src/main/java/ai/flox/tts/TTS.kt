@@ -33,8 +33,7 @@ import java.io.IOException
 
 // --- Interface Definition ---
 interface ITts {
-    val generatedAudio: SharedFlow<FloatArray>
-    fun generate(text: String, sid: Int = 0, speed: Float = 1.0f)
+    suspend fun generate(text: String, sid: Int = 0, speed: Float = 1.0f): FloatArray?
     fun stop()
     fun release()
     // Add other necessary public methods if any
@@ -45,19 +44,17 @@ class TTS(private val context: Context) : ITts {
     private val TAG: String = "TTS"
     private var tts: OfflineTts? = null
     private val ttsScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
-    private var generationJob: Job? = null
+    private var initJob: Job
     private val mutex = Mutex()
-    private var stopped: Boolean = false
 
     private val _generatedAudio = MutableSharedFlow<FloatArray>(replay = 0, extraBufferCapacity = 64, onBufferOverflow = BufferOverflow.DROP_OLDEST)
-    override val generatedAudio: SharedFlow<FloatArray> = _generatedAudio.asSharedFlow()
 
     init {
-        initTts()
+        initJob = initTts()
     }
 
-    private fun initTts() {
-        ttsScope.launch {
+    private fun initTts(): Job {
+        return ttsScope.launch {
             mutex.withLock {
                 if (tts == null) {
                     var modelDir: String?
@@ -70,7 +67,7 @@ class TTS(private val context: Context) : ITts {
                     var lexicon: String?
                     var dataDir: String?
                     var dictDir: String?
-                    var assets: AssetManager? = context.assets
+                    val assets: AssetManager = context.assets
                     acousticModelName = null
                     vocoder = null
 
@@ -83,12 +80,12 @@ class TTS(private val context: Context) : ITts {
                     ruleFsts = "$modelDir/phone-zh.fst,$modelDir/date-zh.fst,$modelDir/number-zh.fst"
 
                     if (dataDir != null) {
-                        val newDir = copyDataDir(dataDir!!)
+                        val newDir = copyDataDir(dataDir)
                         dataDir = "$newDir/$dataDir"
                     }
 
                     if (dictDir != null) {
-                        val newDir = copyDataDir(dictDir!!)
+                        val newDir = copyDataDir(dictDir)
                         dictDir = "$newDir/$dictDir"
                         if (ruleFsts == null) {
                             ruleFsts = "$modelDir/phone.fst,$modelDir/date.fst,$modelDir/number.fst"
@@ -96,7 +93,7 @@ class TTS(private val context: Context) : ITts {
                     }
 
                     val config = getOfflineTtsConfig(
-                        modelDir = modelDir!!,
+                        modelDir = modelDir,
                         modelName = modelName ?: "",
                         acousticModelName = acousticModelName ?: "",
                         vocoder = vocoder ?: "",
@@ -109,6 +106,7 @@ class TTS(private val context: Context) : ITts {
                     )!!
 
                     tts = OfflineTts(assetManager = assets, config = config)
+                    Log.i(TAG, "TTS initialized")
                 }
             }
         }
@@ -123,36 +121,59 @@ class TTS(private val context: Context) : ITts {
     }
 
     override fun stop() {
-        generationJob?.cancel()
+        // The underlying native call is blocking, so we can't easily interrupt it.
+        // This stop function will prevent future generations but won't stop one in progress.
+        Log.w(TAG, "Stopping TTS generation. Note: Cannot interrupt a generation in progress.")
     }
 
-    override fun generate(text: String, sid: Int, speed: Float) {
-        generationJob = ttsScope.launch {
-            mutex.withLock {
-                val currentTts = tts
-                if (currentTts == null) {
-                    Log.e(TAG, "TTS not initialized, cannot generate.")
-                    initTts()
-                    return@launch
+    override suspend fun generate(text: String, sid: Int, speed: Float): FloatArray? {
+        initJob.join() // Ensure TTS is initialized before proceeding
+
+        return mutex.withLock {
+            val currentTts = tts
+            if (currentTts == null) {
+                Log.e(TAG, "TTS not initialized, cannot generate.")
+                return@withLock null
+            }
+
+            if (text.isBlank()) {
+                Log.w(TAG, "Skipping generation for blank text.")
+                return@withLock null
+            }
+
+            val audioChunks = mutableListOf<FloatArray>()
+            Log.d(TAG, "Starting TTS generation for: '$text'")
+
+            try {
+                currentTts.generateWithCallback(
+                    text = text,
+                    sid = sid,
+                    speed = speed,
+                    callback = { samples ->
+                        audioChunks.add(samples)
+                        1 // Return 1 to continue generation
+                    }
+                )
+                Log.d(TAG, "Finished TTS generation call for: '$text'")
+
+                val totalSize = audioChunks.sumOf { it.size }
+                if (totalSize == 0) {
+                    Log.w(TAG, "TTS generated no audio samples for text: '$text'")
+                    return@withLock null
                 }
 
-                if (text.isBlank()) {
-                    Log.w(TAG, "Skipping generation for blank text.")
-                    return@launch
+                // Concatenate all chunks into a single float array
+                val concatenatedData = FloatArray(totalSize)
+                var currentOffset = 0
+                for (chunk in audioChunks) {
+                    System.arraycopy(chunk, 0, concatenatedData, currentOffset, chunk.size)
+                    currentOffset += chunk.size
                 }
-
-                Log.d(TAG, "Starting TTS generation for: '$text'")
-                try {
-                    currentTts.generateWithCallback(
-                        text = text,
-                        sid = sid,
-                        speed = speed,
-                        callback = this@TTS::callback
-                    )
-                    Log.d(TAG, "Finished TTS generation call for: '$text'")
-                } catch (e: Exception) {
-                    Log.e(TAG, "Error during TTS generation for '$text'", e)
-                }
+                Log.d(TAG, "Concatenated audio size: ${concatenatedData.size}")
+                return@withLock concatenatedData
+            } catch (e: Exception) {
+                Log.e(TAG, "Error during TTS generation for '$text'", e)
+                return@withLock null
             }
         }
     }

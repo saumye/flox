@@ -35,4 +35,6 @@ dependencies {
     implementation(project(":features:detail:impl"))
     implementation(project(":core:storage"))
     implementation(project(":core:base"))
+    implementation(libs.androidx.work.runtime.ktx)
+    implementation(libs.androidx.hilt.work)
 }

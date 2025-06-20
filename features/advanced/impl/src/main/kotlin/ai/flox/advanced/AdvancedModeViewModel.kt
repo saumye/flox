@@ -299,12 +299,12 @@ class AdvancedModeViewModel @Inject constructor(
                         }
 
                         // Collect all generated audio after queuing
-                        tts.generatedAudio
-                            .catch { e -> Log.e(TAG, "Error in generatedAudio flow", e) }
-                            .collect { audioChunk ->
-                                Log.d(TAG, "Sending TTS audio chunk for visualization")
-                                trySend(AdvancedModeAction.UpdateVisualisation(audioChunk, USER_ID_AI))
-                            }
+//                        tts.generatedAudio
+//                            .catch { e -> Log.e(TAG, "Error in generatedAudio flow", e) }
+//                            .collect { audioChunk ->
+//                                Log.d(TAG, "Sending TTS audio chunk for visualization")
+//                                trySend(AdvancedModeAction.UpdateVisualisation(audioChunk, USER_ID_AI))
+//                            }
                     } catch (e: Exception) {
                         Log.e(TAG, "Error during TTS generation/collection", e)
                     } finally {

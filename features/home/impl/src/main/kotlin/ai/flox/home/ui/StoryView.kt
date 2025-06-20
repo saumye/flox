@@ -4,6 +4,7 @@ import ai.flox.arch.Store
 import ai.flox.home.model.HomeAction
 import ai.flox.home.model.NewsCategory
 import ai.flox.home.model.NewsItem
+import ai.flox.home.service.AudioPlaybackService
 import ai.flox.state.Action
 import ai.flox.state.State
 import androidx.compose.foundation.background
@@ -40,6 +41,7 @@ import androidx.compose.ui.input.pointer.PointerInputChange
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -84,6 +86,17 @@ fun StoryView(
     // Track current article for click handling
     var currentArticleIndex by remember { mutableStateOf(0) }
     
+    // Clean up audio when story view is dismissed
+    DisposableEffect(Unit) {
+        // Start background audio when the story view is shown
+        store.dispatch(HomeAction.StartBackgroundAudio)
+        onDispose {
+            // Stop all audio when the story view is dismissed
+            store.dispatch(HomeAction.StopStoryAudio(""))
+            store.dispatch(HomeAction.StopBackgroundAudio)
+        }
+    }
+    
     Box(modifier = Modifier.fillMaxSize()) {
         // Use the Stories library to display articles
         Stories(
@@ -94,9 +107,14 @@ fun StoryView(
             touchToPause = true,
             onEveryStoryChange = { index ->
                 currentArticleIndex = index
-                articles[currentArticleIndex].description?.let { store.dispatch(HomeAction.StartSpeak(it)) }
+                // Stop previous audio and play new one
+                store.dispatch(HomeAction.StopStoryAudio(""))
+                articles[currentArticleIndex].id.let { newsId ->
+                    store.dispatch(HomeAction.PlayStoryAudio(newsId))
+                }
             },
             onComplete = {
+                store.dispatch(HomeAction.StopStoryAudio(""))
                 onClose()
             }
         ) { index ->
@@ -171,13 +189,6 @@ fun StoryView(
                     modifier = Modifier.padding(top = 4.dp)
                 )
             }
-        }
-    }
-    
-    // Clean up resources when the story view is dismissed
-    DisposableEffect(Unit) {
-        onDispose {
-            // Any cleanup if needed
         }
     }
 }

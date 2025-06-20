@@ -21,6 +21,9 @@ class FeatureConventionPlugin : Plugin<Project> {
             add("implementation",libs.hilt)
             add("implementation",libs.hilt.android.compiler)
             add("kapt", libs.hilt.android.compiler)
+            add("implementation", libs.androidx.hilt.work)
+            add("implementation", libs.androidx.hilt.common)
+            add("kapt", libs.androidx.hilt.compiler)
 
             // Test
             add("testImplementation",libs.junit)

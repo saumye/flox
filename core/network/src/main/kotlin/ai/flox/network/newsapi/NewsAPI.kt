@@ -9,7 +9,7 @@ interface NewsAPI {
     @GET("top-headlines")
     suspend fun headlines(
         @Query("apikey") apiKey: String,
-        @Query("country") country: String = "us",
+        @Query("country") country: String = "in",
         @Query("category") category: String = "general",
         @Query("max") max: Int = 10,
         @Query("lang") lang: String = "en"

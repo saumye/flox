@@ -2,8 +2,9 @@ package ai.flox.storage.news
 
 import androidx.room.ColumnInfo
 import androidx.room.Entity
+import androidx.room.Index
 
-@Entity(tableName = "article", primaryKeys = ["id", "url"])
+@Entity(tableName = "article", primaryKeys = ["id"], indices = [Index(value = ["url"], unique = true)])
 data class NewsArticleEntity(
     @ColumnInfo(name ="title")
     val title: String,

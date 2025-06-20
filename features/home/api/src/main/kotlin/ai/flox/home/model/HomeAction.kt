@@ -5,16 +5,9 @@ import ai.flox.state.ComponentIdentifier
 import ai.flox.state.Resource
 
 sealed interface HomeAction : Action {
-    data object RecentNewsRendered : Action.UI.RenderEvent, HomeAction {
-        override val componentIdentifier = HomeIds.RecentNews
-    }
 
     data class SelectCategory(val category: NewsCategory) : Action.UI.RenderEvent, HomeAction {
         override val componentIdentifier = HomeIds.RecentNews
-    }
-
-    data object LoadTopStories : Action.UI.RenderEvent, HomeAction {
-        override val componentIdentifier = HomeIds.TopStories
     }
 
     data class StartSpeak(val text: String) : Action.UI.InputEvent,
@@ -40,6 +33,15 @@ sealed interface HomeAction : Action {
 
     data class DeleteArticles(override val resource: Resource<NewsItem>) :
         Action.Data.LoadData<NewsItem>, HomeAction
+
+    object StartBackgroundAudio : HomeAction
+    object StopBackgroundAudio : HomeAction
+
+    data class PlayStoryAudio(val newsId: String) : HomeAction
+    data class StopStoryAudio(val newsId: String) : HomeAction
+    data class PauseStoryAudio(val newsId: String) : HomeAction
+    data class ResumeStoryAudio(val newsId: String) : HomeAction
+
 }
 
 object HomeIds {

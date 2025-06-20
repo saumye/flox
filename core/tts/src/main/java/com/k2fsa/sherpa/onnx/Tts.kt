@@ -97,8 +97,8 @@ class OfflineTts(
 
     fun generateWithCallback(
         text: String,
-        sid: Int = 0,
-        speed: Float = 1.0f,
+        sid: Int = 31,
+        speed: Float = 0.85f,
         callback: (samples: FloatArray) -> Int
     ): GeneratedAudio {
         val objArray = generateWithCallbackImpl(

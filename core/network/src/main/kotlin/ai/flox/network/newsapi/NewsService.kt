@@ -24,7 +24,7 @@ class NewsService @Inject constructor(
     //TODO: Create BaseService with BaseFunctionality
 
     suspend fun headlines(
-        country: String = "us",
+        country: String = "in",
         category: String = "general",
         max: Int = 10,
         lang: String = "en"
@@ -47,7 +47,7 @@ class NewsService @Inject constructor(
 
     suspend fun search(
         query: String,
-        country: String = "us",
+        country: String = "in",
         max: Int = 10,
         lang: String = "en",
         from: String? = null,
