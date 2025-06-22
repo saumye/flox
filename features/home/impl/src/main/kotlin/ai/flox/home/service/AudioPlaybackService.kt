@@ -50,7 +50,7 @@ class AudioPlaybackService : Service() {
         if (backgroundPlayer == null) {
             try {
                 //val assetFileDescriptor = assets.openFd("breaking_news_1.mp3")
-                val assetFileDescriptor = assets.openFd("news_bg.mp3")
+                val assetFileDescriptor = assets.openFd("news_bg_reduced.mp3")
                 backgroundPlayer = MediaPlayer().apply {
                     setAudioAttributes(
                         AudioAttributes.Builder()
@@ -60,7 +60,7 @@ class AudioPlaybackService : Service() {
                     )
                     setDataSource(assetFileDescriptor.fileDescriptor, assetFileDescriptor.startOffset, assetFileDescriptor.length)
                     isLooping = true
-                    setVolume(0.3f, 0.3f) // Lower volume for background
+                    setVolume(0.5f, 0.5f) // Lower volume for background
                     prepareAsync()
                     setOnPreparedListener {
                         Log.d(TAG, "Background music prepared, starting.")
@@ -83,7 +83,7 @@ class AudioPlaybackService : Service() {
     }
 
     private fun playStoryAudio(newsId: String) {
-        backgroundPlayer?.setVolume(0.1f, 0.1f) // Duck background audio
+        backgroundPlayer?.setVolume(0.5f, 0.5f) // Duck background audio
 
         val audioFile = StorageUtils.getWavAudioFile(this, newsId)
         if (audioFile == null || !audioFile.exists()) {
@@ -103,6 +103,7 @@ class AudioPlaybackService : Service() {
             )
             try {
                 setDataSource(audioFile.absolutePath)
+                setVolume(0.9f, 0.9f)
                 prepareAsync()
                 setOnPreparedListener {
                     Log.d(TAG, "Story audio prepared, starting for newsId: $newsId")
@@ -136,7 +137,7 @@ class AudioPlaybackService : Service() {
     }
 
     private fun resumeBackgroundMusic() {
-        backgroundPlayer?.setVolume(0.3f, 0.3f)
+        backgroundPlayer?.setVolume(0.1f, 0.1f)
     }
 
     private fun stopBackgroundMusic() {

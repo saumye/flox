@@ -10,37 +10,20 @@ sealed interface HomeAction : Action {
         override val componentIdentifier = HomeIds.RecentNews
     }
 
-    data class StartSpeak(val text: String) : Action.UI.InputEvent,
-        HomeAction {
-        override val componentIdentifier: ComponentIdentifier = HomeIds.TopStories
-    }
-
     // Articles/News
     data class CreateOrUpdateArticles(override val resource: Resource<List<NewsItem>>) :
         Action.Data.LoadData<List<NewsItem>>, HomeAction
 
-    data class LoadArticles(override val resource: Resource<List<NewsItem>>) :
-        Action.Data.LoadData<List<NewsItem>>, HomeAction
-
     data class LoadCategoryArticles(val category: NewsCategory, override val resource: Resource<List<NewsItem>>) :
         Action.Data.LoadData<List<NewsItem>>, HomeAction
-
-    data class LoadTopStoriesArticles(override val resource: Resource<List<NewsItem>>) :
-        Action.Data.LoadData<List<NewsItem>>, HomeAction
-
-    data class UpdateArticles(override val resource: Resource<NewsItem>) :
-        Action.Data.UpdateData<NewsItem>, HomeAction
 
     data class DeleteArticles(override val resource: Resource<NewsItem>) :
         Action.Data.LoadData<NewsItem>, HomeAction
 
     object StartBackgroundAudio : HomeAction
     object StopBackgroundAudio : HomeAction
-
     data class PlayStoryAudio(val newsId: String) : HomeAction
-    data class StopStoryAudio(val newsId: String) : HomeAction
-    data class PauseStoryAudio(val newsId: String) : HomeAction
-    data class ResumeStoryAudio(val newsId: String) : HomeAction
+    data class StopStoryAudio(val newsId: String? = null) : HomeAction
 
 }
 

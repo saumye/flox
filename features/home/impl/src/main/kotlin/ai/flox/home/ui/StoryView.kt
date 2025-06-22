@@ -4,7 +4,6 @@ import ai.flox.arch.Store
 import ai.flox.home.model.HomeAction
 import ai.flox.home.model.NewsCategory
 import ai.flox.home.model.NewsItem
-import ai.flox.home.service.AudioPlaybackService
 import ai.flox.state.Action
 import ai.flox.state.State
 import androidx.compose.foundation.background
@@ -41,7 +40,6 @@ import androidx.compose.ui.input.pointer.PointerInputChange
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -90,9 +88,10 @@ fun StoryView(
     DisposableEffect(Unit) {
         // Start background audio when the story view is shown
         store.dispatch(HomeAction.StartBackgroundAudio)
+        store.dispatch(HomeAction.PlayStoryAudio(articles[0].id))
         onDispose {
             // Stop all audio when the story view is dismissed
-            store.dispatch(HomeAction.StopStoryAudio(""))
+            store.dispatch(HomeAction.StopStoryAudio())
             store.dispatch(HomeAction.StopBackgroundAudio)
         }
     }
@@ -103,27 +102,25 @@ fun StoryView(
             numberOfPages = articles.size,
             indicatorBackgroundColor = Color.Gray.copy(alpha = 0.5f),
             indicatorProgressColor = MaterialTheme.colorScheme.primary,
-            slideDurationInSeconds = 15,
+            slideDurationInSeconds = 16,
             touchToPause = true,
             onEveryStoryChange = { index ->
                 currentArticleIndex = index
                 // Stop previous audio and play new one
-                store.dispatch(HomeAction.StopStoryAudio(""))
                 articles[currentArticleIndex].id.let { newsId ->
                     store.dispatch(HomeAction.PlayStoryAudio(newsId))
+                    store.dispatch(HomeAction.StartBackgroundAudio)
                 }
             },
             onComplete = {
-                store.dispatch(HomeAction.StopStoryAudio(""))
+                store.dispatch(HomeAction.StopStoryAudio(articles[currentArticleIndex].id))
                 onClose()
             }
         ) { index ->
             // Create the story content for each article
             ArticleStoryContent(
                 article = articles[index],
-                onArticleClick = { onArticleClick(articles[index]) },
-                onNextClick = { if(index < articles.size-1) onArticleClick(articles[index+1]) },
-                onPreviousClick = { if(index > 0) onArticleClick(articles[index-1]) }
+                onArticleClick = { onArticleClick(articles[index]) }
             )
         }
         
@@ -197,16 +194,17 @@ fun StoryView(
 fun ArticleStoryContent(
     article: NewsItem,
     onArticleClick: () -> Unit,
-    onNextClick: () -> Unit,
-    onPreviousClick: () -> Unit,
 ) {
     Box(
         modifier = Modifier
             .fillMaxSize()
+//            .pointerInput(Unit) {
+//                detectTapGestures { offset -> if (offset.x < size.width / 2) onPrevious() else onNext() }
+//            }
             .pointerInput(Unit) {
                 val velocityTracker = VelocityTracker()
                 detectDragGestures(
-                    onDragStart = { offset ->
+                    onDragStart = { _ ->
                         velocityTracker.resetTracking()
                     },
                     onDrag = { change: PointerInputChange, dragAmount: Offset ->
@@ -221,17 +219,6 @@ fun ArticleStoryContent(
                         }
                     }
                 )
-                
-                // Handle tap gestures
-                detectTapGestures { offset ->
-                    val screenWidth = size.width
-                    val x = offset.x
-                    if (x < screenWidth / 2) {
-                        onPreviousClick()
-                    } else {
-                        onNextClick()
-                    }
-                }
             }
     ) {
         // Article image as background

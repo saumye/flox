@@ -1,5 +1,6 @@
 package ai.flox
 
+import ai.flox.advanced.model.AdvancedModeAction
 import ai.flox.arch.Store
 import ai.flox.chat.ChatRoutes
 import ai.flox.conversation.model.ChatIds
@@ -23,7 +24,10 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Face
 import androidx.compose.material3.Button
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
@@ -63,7 +67,31 @@ class MainActivity : ComponentActivity() {
             val navController = rememberNavController()
             navigationReducer.appNavController = navController
             FloxTheme {
-                Scaffold { innerPadding ->
+                Scaffold(
+                    floatingActionButton = {
+                        FloatingActionButton(
+                            onClick = {
+                                store.dispatch(
+                                    ConversationAction.CreateOrUpdateConversation(
+                                        Resource.Pending(
+                                            Conversation(title = "New Conversation")
+                                        )
+                                    ),
+                                    Action.Navigate(
+                                        route = ChatRoutes.chat
+                                    )
+                                )
+                            },
+                            modifier = Modifier.padding(16.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Face,
+                                contentDescription = "Chat"
+                            )
+                        }
+                    }
+                ) {
+                    innerPadding ->
                     Column(
                         modifier = Modifier.padding(innerPadding),
                         verticalArrangement = Arrangement.spacedBy(16.dp),

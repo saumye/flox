@@ -43,15 +43,6 @@ class HomeScreenViewModel @Inject constructor(
                 val newState = state.copy(selectedCategory = action.category)
                 newState.withFlowEffect(newsRepository.getNewsByCategory(action.category))
             }
-
-            is HomeAction.LoadArticles -> {
-                if (action.resource is Resource.Success) {
-                    val res = action.resource as Resource.Success<List<NewsItem>>
-                    state.copy(recentNewsList = res.data.associateBy { msg -> msg.id }).noEffect()
-                } else {
-                    state.noEffect()
-                }
-            }
             
             is HomeAction.LoadCategoryArticles -> {
                 if (action.resource is Resource.Success) {
@@ -60,15 +51,6 @@ class HomeScreenViewModel @Inject constructor(
                     val currentCategorizedNews = state.categorizedNews.toMutableMap()
                     currentCategorizedNews[category] = res.data.associateBy { it.id }
                     state.copy(categorizedNews = currentCategorizedNews).noEffect()
-                } else {
-                    state.noEffect()
-                }
-            }
-            
-            is HomeAction.LoadTopStoriesArticles -> {
-                if (action.resource is Resource.Success) {
-                    val res = action.resource as Resource.Success<List<NewsItem>>
-                    state.copy(topStories = res.data.associateBy { it.id }).noEffect()
                 } else {
                     state.noEffect()
                 }

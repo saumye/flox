@@ -31,6 +31,9 @@ class FeatureConventionPlugin : Plugin<Project> {
             add("androidTestImplementation",libs.espresso.core)
             add("implementation", libs.navigation.compose)
             add("implementation",libs.coil)
+            add("implementation", libs.androidx.work.runtime.ktx)
+            add("implementation", libs.androidx.hilt.work)
+            add("implementation", libs.joda.time)
 
         }
     }

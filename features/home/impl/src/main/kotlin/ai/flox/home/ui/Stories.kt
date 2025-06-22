@@ -32,7 +32,7 @@ fun Stories(
     indicatorBackgroundColor: Color = Color.LightGray,
     indicatorProgressColor: Color = Color.White,
     indicatorBackgroundGradientColors: List<Color> = emptyList(),
-    slideDurationInSeconds: Long = 5,
+    slideDurationInSeconds: Long = 15,
     touchToPause: Boolean = true,
     hideIndicators: Boolean = false,
     onEveryStoryChange: ((Int) -> Unit)? = null,
